@@ -90,6 +90,31 @@ never an estimate.
 - Prep is for getting a clear picture of what we build; building early is acceptable to
   the team, subject to checking the organisers' rules (open in `STATE.md`).
 
+## D10 — Ambition raised; capability map first (2026-10-06)
+
+The team does not want to stop at the PSI07 minimum or at five behaviours. Before any
+build, `CAPABILITY_MAP.md` lists everything that is possible by layer (tracks, pose,
+pairs, crowd, cross-camera, context) and every Side B feature, each with feasibility,
+data need and how it would be measured. D3's five behaviours remain the *committed*
+build scope until the team promotes more from the map; each promotion gets its own
+entry here. D2 (Side A before Side B) is unchanged.
+
+## D11 — Behaviours apply to anyone, not to women (2026-10-06)
+
+Cross-camera and context rules (e.g. a person who never exits a street) flag **any**
+person. Women's and children's safety sets priorities and alert wording, not a
+classifier. Consistent with D5 (no gender inference).
+
+## D12 — Offender-registry layer and non-consensual tracking (2026-10-06)
+
+- Tracking a named person by appearance without their consent (the "mother tracks
+  daughter purely through footage" idea): **rejected.** The consented trip share
+  replaces it (`CAPABILITY_MAP.md` §3.3).
+- Public sex-offender registry layer: **open, not in MVP or showcase.** Needs a verified
+  official public source and a team decision between the options in
+  `CAPABILITY_MAP.md` §3.4. If built, it never links a registered person to a camera
+  track.
+
 ## Still open
 
 Tracked in `STATE.md` → "Not decided".

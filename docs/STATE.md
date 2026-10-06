@@ -52,6 +52,12 @@ Last updated: 2026-10-06 (planning session, before any code).
 - [ ] Which 5 km route we draw on the map (campus + which road).
 - [ ] Responder alerts: ntfy.sh or a Telegram bot.
 - [ ] Stack and repo shape in `ARCHITECTURE.md` are **proposed**, not locked.
+- [ ] **Which items from `CAPABILITY_MAP.md` get promoted into scope** (pre-planning,
+      `TASKS` 0.8). The map is the input; D3's five behaviours are still the committed set.
+- [ ] Public offender-registry layer: verify an official public source, then pick
+      option (a), (b) or (c) in `CAPABILITY_MAP.md` §3.4 (D12).
+- [ ] Deployment path beyond the hackathon: own build, campus pilot, or government
+      partner (`CAPABILITY_MAP.md` §4).
 
 ## First steps for the next session
 
@@ -71,4 +77,5 @@ Last updated: 2026-10-06 (planning session, before any code).
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-06 | Pre-planning | Pushed docs to GitHub. Re-read PSI07's must-do list. Wrote `CAPABILITY_MAP.md` (all behaviours by layer, Side B features, legal paths); added D10–D12 and task 0.8. No code. |
 | 2026-10-06 | Planning | Read the booklet; compared all 10 statements; chose PSI07 + safety layer; named it Angel's Eye; researched data, keys and costs; wrote these docs. No code. |

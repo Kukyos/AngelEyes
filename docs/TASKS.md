@@ -24,6 +24,7 @@ something only verified in theory.
 | 0.5 | Pick the responder alert channel (ntfy.sh or Telegram) | team | ☐ |
 | 0.6 | Confirm stack and repo shape; record in `DECISIONS.md` | team | ☐ |
 | 0.7 | Each builder copies `docs/BUILD_RULES.md` into a local, gitignored `CLAUDE.md` | all | ☐ |
+| 0.8 | Pre-planning phase: list what the problem statement REQUIRES (must), then what is possible (could), before any build; record in `STATE.md` | | ◐ map written in `CAPABILITY_MAP.md`; promotion into scope still to decide |
 
 ## Stage 1 — Data and setup
 
