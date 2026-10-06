@@ -1,0 +1,31 @@
+# Local AI instructions — each builder keeps their own; source is docs/BUILD_RULES.md
+CLAUDE.md
+AGENTS.md
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Source material and footage (only data/samples/ is committed)
+materials/
+data/raw/
+data/meva/
+*.mp4
+*.avi
+*.mov
+!data/samples/**
+
+# Model weights
+*.pt
+*.onnx
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
