@@ -237,9 +237,9 @@ def safewalk_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_l
     """Return fastest and safest routes between two points."""
     counts = {cam: v for cam, v in camera_counts.items() if time.time() - v["ts"] < 60}
     brightness = {cam: v for cam, v in camera_brightness.items() if time.time() - v["ts"] < 60}
-    events = events(camera=None, type=None)
+    ev_list = events(camera=None, type=None)
 
-    sw = SafeWalk(counts=counts, brightness=brightness, events=events)
+    sw = SafeWalk(counts=counts, brightness=brightness, events=ev_list)
     fastest, safest = sw.route(origin_lat, origin_lon, dest_lat, dest_lon, prefer_safe=True)
     heatmap = sw.heatmap()
 
