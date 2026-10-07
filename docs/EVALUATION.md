@@ -52,6 +52,11 @@ it overlaps the true interval within 1 s; extra detections of an already-matched
 Vision model (live activity): measured $0.000348 for one 746-token composite call
 (`runs/phone/events.json` → `vlm`), with latency 3–14 s per call in live use.
 
+Activity-confidence calibration is **not measured yet**. `angelseye/eval_activity.py` has a
+label-sheet generator and offline scorer, but there are no labelled activity runs.
+`docs/IMPROVEMENTS.md` I5 lists the remaining evidence and the distinction between final-event
+and raw-call confidence.
+
 ## Staged clips: watch rules (2026-10-07, not formal ground truth)
 
 Two clips recorded by the team (`test4u.mp4` 31 s, `anothertest4u.mp4` 55 s; not in the repo: real faces), replayed
