@@ -11,6 +11,7 @@ model:
                              # runners on their track); new tracks still need tracker new_track_thresh
   draw_conf: 0.25            # untracked boxes below this are blurred but not drawn
   tracker: bytetrack.yaml
+  live_tracker: trackers/live.yaml   # longer memory for lost people (see the file); relative to the repo root
   sample_fps: 10             # frames analysed per second per camera
   live_sample_fps: 15        # live camera (--live): smoother view, still one camera per GPU
   motion_gate: 0             # mean abs frame difference (0-255) below which the last detections are reused; 0 = off.
@@ -99,13 +100,16 @@ describe:                    # open-ended activity via a vision-language model (
   min_interval_s: 1.5        # sooner when someone enters or leaves
   frame_gap_s: 1.0           # the two moments compared in each close-up
   context_w: 768             # px width of the whole-view image in the composite
-  crop_h: 288                # px height of each person close-up
+  crop_h: 240                # px height of each person close-up (was 288: fewer image tokens)
   crop_pad: 0.15             # padding around the person's box
   max_people: 4              # close-ups per call
   timeout_s: 20
+  max_in_flight: 2           # calls waiting on the model at once; latency is 3-22 s, so with 1 a caption could
+                             # only refresh every ~8-20 s. interval_s still caps the call rate (cost)
   enter_s: 2.5               # a new track must last this long before "entered the frame"
   enter_strong: 12           # and have this many confident detections (filters flickers, coats on hooks)
-  leave_s: 3.0               # a person unseen this long, with no new track taking their place, has "left the frame"
+  leave_s: 3.0               # a person last seen at a frame edge and unseen this long has left (their tile goes)
+  occluded_s: 15.0           # lost mid-frame (turned away, hidden): nobody leaves from the middle, so wait longer
   same_words: 0.5            # word overlap at which a new description counts as the same activity
 
 hub:

@@ -82,10 +82,11 @@ something only verified in theory.
 
 | # | Task | Owner | Done |
 |---|---|---|---|
-| I1 | False "entered"/"left" on the live camera: tracker buffer, merge by position + colour, "left" only at a frame edge; ground-truth clip + score in `eval` | | ☐ |
+| I1 | False "entered"/"left" on the live camera: tracker buffer, merge by position + colour, "left" only at a frame edge; ground-truth clip + score in `eval` | kukyos | ◐ `trackers/live.yaml` (buffer 150), nearest-position merge, edge/occluded leave, enter/leave no longer logged (tiles instead), `--rotate`. Colour merge, ground truth + score open |
+| I10 | Live page: one tile per subject; rotate option on Add camera; prompt example leak ("puzzle cube") removed | kukyos | ◐ replayed recording only; not yet on the live phone |
 | I2 | Cut vision-model tokens: send only on change, back off on repeated answers, smaller image; measure from `vlm` stats | | ☐ |
 | I3 | Ghost subjects: show/use a track only after strong detections + visible keypoints; check false alarms in `eval` | | ☐ |
-| I4 | Vision-model latency 3–14 s: faster model or fewer people per call | | ☐ |
+| I4 | Vision-model latency 3–14 s: faster model or fewer people per call | kukyos | ◐ no context strip for one person, `crop_h` 240, 2 calls in flight: 2.1–2.7 s on one 90 s replay (was median 7.7 s); not yet live |
 | I6 | One person drawn as several on live cameras (1280 upscale) → `model.live_imgsz: 640` | kukyos | ◐ webcam: 1 box, 1 ID per frame; phone stream not rechecked |
 | I7 | Non-events in the log (idle captions, clothing, desk loitering) | kukyos | ◐ built on `mvp1`; idle handling seen live, not scored |
 | I5 | Check the model's self-reported confidence against labelled clips before alerting on it | jonathan-16bit | ◐ offline evaluator and review protocol built; labelled clips and calibration decision still needed |

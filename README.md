@@ -61,6 +61,9 @@ camera URL (IP Webcam app: `http://PHONE_IP:8080/video`) → **Add camera**. The
 Every live camera, including teammates' webcams, shows as a tile in one grid; click a tile to see its
 people and log on the right, **Remove** to stop it. The phone must be reachable from the host
 (same Wi-Fi; campus Wi-Fi blocks it, use a hotspot). `hub.max_engines` in `config.yaml` caps how many run.
+**Phone held upright?** IP Webcam streams it sideways: pick **90°** next to the URL (the engine's `--rotate`).
+Sideways people read as lying down (false falls), track badly, and hand-up rules can't fire.
+The right panel shows one tile per person in view, kept across tracker ID switches.
 
 ## Run it
 

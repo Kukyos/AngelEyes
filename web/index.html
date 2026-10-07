@@ -104,6 +104,7 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 #srcForm { display: flex; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 #srcForm input { font: inherit; color: var(--text); background: #0a0a0a; border: 1px solid var(--line); padding: 6px 8px; min-width: 0; }
 #srcName { width: 110px; } #srcUrl { flex: 1; }
+#srcForm select { font: inherit; color: var(--text); background: #0a0a0a; border: 1px solid var(--line); padding: 6px 4px; }
 #srcMsg { padding: 0 12px; font-size: 12px; color: var(--dim); }
 #camGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); grid-auto-rows: minmax(220px, 1fr); gap: 2px; min-height: 0; overflow: auto; }
 #camGrid .empty { grid-column: 1 / -1; display: grid; place-items: center; }
@@ -122,10 +123,16 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 .rule { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline; padding: 6px 0 0; font-size: 12px; }
 .rule .s { grid-column: 1; font: 11px var(--mono); color: var(--faint); }
 .now { padding: 4px 16px 16px; border-bottom: 1px solid var(--line); }
-.who { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: baseline; padding: 10px 0; animation: enter .4s var(--ease); }
-.who .p { font: 12px var(--mono); color: var(--dim); }
-.who .d { font-size: 20px; line-height: 1.25; font-weight: 500; }
-.who .s { grid-column: 2; font: 11px var(--mono); color: var(--faint); }
+#nowList { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 40vh; overflow-y: auto; }
+#nowList .empty { grid-column: 1 / -1; }
+.who { border: 1px solid var(--line); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; animation: enter .4s var(--ease);
+  transition: opacity .3s var(--ease); }
+.who.gone { opacity: .4; }
+.who.alert { border-color: var(--text); }
+.who .p { font: 12px var(--mono); color: var(--dim); display: flex; justify-content: space-between; }
+.who .d { font-size: 17px; line-height: 1.25; font-weight: 500; }
+.who .f { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.who .s { font: 11px var(--mono); color: var(--faint); }
 .log { display: grid; grid-template-columns: 64px 36px 1fr; gap: 8px; padding: 6px 16px; font-size: 13px; animation: enter .4s var(--ease); }
 .log .tm, .log .p { font: 11px var(--mono); color: var(--faint); padding-top: 2px; }
 .log.alert { font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
@@ -164,7 +171,7 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 <main id="cam">
   <div id="camView">
     <div>
-      <form id="srcForm"><input id="srcName" maxlength="40" placeholder="name" aria-label="Camera name"><input id="srcUrl" placeholder="http://PHONE_IP:8080/video  (IP Webcam app)" aria-label="Camera URL"><button>Add camera</button></form>
+      <form id="srcForm"><input id="srcName" maxlength="40" placeholder="name" aria-label="Camera name"><input id="srcUrl" placeholder="http://PHONE_IP:8080/video  (IP Webcam app)" aria-label="Camera URL"><select id="srcRot" aria-label="Rotate" title="Phone held upright? Its stream is sideways: rotate 90°"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select><button>Add camera</button></form>
       <div id="srcMsg"></div>
     </div>
     <div id="camGrid"><div class="empty">No cameras yet. Add an IP camera above, or open /webcam to send a browser webcam.</div></div>
@@ -527,7 +534,7 @@ const inSession = (e) => camSession && e.id.startsWith(camSession + "-");
 const camT = (iso) => iso.slice(11, 19);
 function pickCam(name) {
   camName = name; camSession = null; camEvents = {}; camRows = {};
-  $("#camName").textContent = name; $("#camLog").replaceChildren(); renderNow();
+  $("#camName").textContent = name; $("#camLog").replaceChildren(); renderNow([]);
   for (const t of document.querySelectorAll(".tile")) t.classList.toggle("sel", t.dataset.name === name);
 }
 async function pollCam() {
@@ -554,21 +561,21 @@ async function pollCam() {
     if (!seen.has(t.dataset.name) && (t.dataset.miss = +t.dataset.miss + 1) > 3) t.remove();
   if (!grid.children.length) grid.append(el("div", "empty", "No cameras yet. Add an IP camera above, or open /webcam to send a browser webcam."));
   if (camName && !grid.querySelector(`.tile[data-name="${CSS.escape(camName)}"]`)) {
-    camName = null; camSession = null; $("#camName").textContent = ""; $("#camLog").replaceChildren(); renderNow();
+    camName = null; camSession = null; $("#camName").textContent = ""; $("#camLog").replaceChildren(); renderNow([]);
   }
   if (!camName && list[0]) pickCam(list[0].name);
   const cam = list.find((c) => c.name === camName);
+  if (cam) renderNow(cam.people || []);
   if (!cam || cam.session === camSession) return;  // same session: nothing to do
   camSession = cam.session;
   const evs = (await j(`/api/events?camera=${encodeURIComponent(cam.name)}`).catch(() => []))
     .filter(inSession).sort((a, b) => (a.t_start < b.t_start ? -1 : 1));
   for (const e of evs) camUpsert(e, false);
-  renderNow();
 }
 $("#srcForm").onsubmit = async (ev) => {
   ev.preventDefault();
   const r = await fetch("/api/sources", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: $("#srcName").value.trim(), url: $("#srcUrl").value.trim() }) });
+    body: JSON.stringify({ name: $("#srcName").value.trim(), url: $("#srcUrl").value.trim(), rotate: +$("#srcRot").value }) });
   const msg = r.ok ? "Starting… the tile appears in about 30 s." : (await r.json().catch(() => ({}))).detail || "could not add";
   $("#srcMsg").textContent = typeof msg === "string" ? msg : "Check the name and the URL";
   if (r.ok) { $("#srcName").value = ""; $("#srcUrl").value = ""; }
@@ -592,31 +599,27 @@ function onCamEvent(e) {
   if (!inSession(e)) return true;  // an older session of this camera: not shown
   const fresh = !camEvents[e.id];
   camUpsert(e, fresh);
-  renderNow();
   if (fresh && isAlert(e)) alarm(e);
   return true;
 }
-function renderNow() {
-  // newest activity per person; people whose latest entry is "left the frame" are gone
-  const latest = {};
-  for (const e of Object.values(camEvents)) {
-    if (e.type !== "activity") continue;
-    const who = e.track_ids[e.track_ids.length - 1];
-    if (!latest[who] || latest[who].t_start < e.t_start) latest[who] = e;
-  }
-  const people = Object.entries(latest).filter(([, e]) => e.evidence.series.caption !== "left the frame");
+function renderNow(people) {
+  // one tile per person in view, sent by the engine with each frame; keyed by subject so a tracker ID switch keeps the tile
   const box = $("#nowList");
-  const want = new Set(people.map(([p]) => "now-" + p));
+  const want = new Set(people.map((p) => "now-" + p.subject));
   for (const child of [...box.children]) if (!want.has(child.id)) child.remove();
   if (!people.length) { box.replaceChildren(el("div", "empty", "Nobody in view")); box.firstChild.style.paddingLeft = 0; return; }
-  for (const [p, e] of people) {
-    let row = document.getElementById("now-" + p);
-    if (!row) { row = el("div", "who"); row.id = "now-" + p; box.append(row); }
-    const html = `<span class="p">P${p}</span><span class="d">${esc(e.evidence.series.caption)}</span><span class="s">since ${camT(e.t_start)}</span>`;
+  for (const p of people) {
+    let row = document.getElementById("now-" + p.subject);
+    if (!row) { row = el("div", "who"); row.id = "now-" + p.subject; box.append(row); }
+    row.classList.toggle("gone", !p.in_view);
+    row.classList.toggle("alert", p.flags.length > 0);
+    const html = `<span class="p"><span>P${p.id}</span><span>${p.in_view ? "" : "out of view"}</span></span>` +
+      `<span class="d">${esc(p.doing || "in view")}</span>` + p.flags.map((f) => `<span class="f">${esc(f)}</span>`).join("") +
+      `<span class="s">since ${esc(p.since)}</span>`;
     if (row.innerHTML !== html) row.innerHTML = html;
   }
 }
-setInterval(pollCam, 2000);
+setInterval(pollCam, 1000);
 pollCam();
 
 // ---------------- watch rules (D20): check -> read it back -> confirm ----------------

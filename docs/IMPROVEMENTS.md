@@ -35,6 +35,24 @@ nothing is going on and idle answers are not logged; the prompt forbids describi
 or clothing; loitering needs a calibrated camera (`loitering.require_calibrated`); a box
 cut off by the frame is labelled `still`/`moving`, not `standing`.
 
+## I10 — Phone stream sideways, prompt leak, enter/leave noise — PARTLY FIXED on `mvp2`
+
+**Seen** (phone session `phone-130134`, 2026-10-07, screenshot): the phone was upright, so IP Webcam
+streamed it rotated 90°. A standing person looked like they were lying down: 648 of 798 boxes in 120–210 s
+were labelled `down`, 4 false falls and 1 sudden run fired, and "arms above the head" rules could never be
+true. The tracker gave one person 57 IDs in 467 s (`track_buffer` 30 frames ≈ 2.4 s at ~12.5 fps; Ultralytics
+8.4 does not scale it by fps). Captions repeated "holding a scrambled puzzle cube": that phrase was the JSON
+example in the prompt.
+
+**Fixes:** `--rotate` / the Add camera 90° option; `trackers/live.yaml` (`track_buffer: 150`); "left" after
+`leave_s` only from a frame edge, else `occluded_s`; ID-switch merge picks the nearest lost person;
+entered/left are no longer events, the page shows one tile per subject from the engine (`X-People` with each
+frame → `/api/live` → `people`); neutral prompt that asks for posture + hands + object; `max_in_flight: 2`.
+
+**Measured** (90 s of that session replayed with `--rotate 90`; the replay is the annotated recording, so
+it carries the old overlays): `down` frames 648 → 26; IDs 20 → 14; 0 falls/runs (5 before); 20 calls at
+2.1–2.7 s (live median before: 7.7 s, 40 calls), 380 prompt tokens per call (815 before). Not yet run on the live phone.
+
 ## I1 — False "entered the frame" / "left the frame" (live camera)
 
 **Seen.** Watching the phone camera live, people were reported entering and leaving while

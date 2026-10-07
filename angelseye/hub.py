@@ -264,7 +264,7 @@ async def ws(sock: WebSocket):
         clients.discard(sock)
 
 
-live: dict[str, tuple[float, bytes, str]] = {}  # camera name -> (time, newest annotated JPEG, engine session id)
+live: dict[str, tuple] = {}  # camera name -> (time, newest annotated JPEG, engine session id, people in view)
 
 
 @app.post("/api/live/{name}")
@@ -273,14 +273,19 @@ async def live_push(name: str, request: Request, session: str = ""):
     body = await request.body()
     if not re.fullmatch(r"[\w.-]{1,64}", name) or not body or len(body) > 3_000_000:
         raise HTTPException(400, "bad frame")
-    live[name] = (time.time(), body, session[:100])
+    try:  # who is in view right now, sent with the frame so tiles match the picture
+        people = json.loads(request.headers.get("x-people") or "[]")
+    except ValueError:
+        people = []
+    live[name] = (time.time(), body, session[:100], people)
     return {"ok": True}
 
 
 @app.get("/api/live")
 def live_list():
     now = time.time()
-    return [{"name": k, "age_s": round(now - t, 1), "session": ses} for k, (t, _, ses) in live.items() if now - t < 10]
+    return [{"name": k, "age_s": round(now - t, 1), "session": ses, "people": ppl}
+            for k, (t, _, ses, ppl) in live.items() if now - t < 10]
 
 
 def mjpeg(store: dict, name: str, request: Request):
@@ -308,7 +313,7 @@ engines: dict[str, dict] = {}  # camera name -> {"proc": Popen, "url": IP camera
 NAME_RE = r"[\w.-]{1,64}"
 
 
-def start_engine(name: str, source: str, url: Optional[str]):
+def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0):
     """One live engine per camera, run by the hub. Browser webcams and IP cameras share the cap."""
     e = engines.get(name)
     if e and e["proc"].poll() is None:
@@ -318,7 +323,8 @@ def start_engine(name: str, source: str, url: Optional[str]):
     port = app.state.port
     UPLOADS.parent.mkdir(parents=True, exist_ok=True)
     engines[name] = {"url": url, "proc": subprocess.Popen(
-        [sys.executable, "-m", "angelseye.engine", source, "--live", "--name", name, "--hub", f"http://127.0.0.1:{port}"],
+        [sys.executable, "-m", "angelseye.engine", source, "--live", "--name", name, "--hub", f"http://127.0.0.1:{port}",
+         "--rotate", str(rotate)],
         cwd=ROOT, stdout=open(UPLOADS.parent / f"cam-{name}.log", "w"), stderr=subprocess.STDOUT)}
 
 
@@ -340,6 +346,7 @@ async def ingest_push(name: str, request: Request):
 class Source(BaseModel):
     name: str
     url: str
+    rotate: int = 0  # degrees clockwise; a phone held upright streams sideways
 
 
 @app.post("/api/sources")
@@ -352,7 +359,9 @@ def source_add(src: Source, request: Request):
         raise HTTPException(400, "The URL must start with http://, https:// or rtsp://")
     if re.fullmatch(r"https?://[^/]+/?", src.url):  # IP Webcam serves its stream at /video
         src.url = src.url.rstrip("/") + "/video"
-    start_engine(src.name, src.url, src.url)
+    if src.rotate not in (0, 90, 180, 270):
+        raise HTTPException(400, "Rotate must be 0, 90, 180 or 270")
+    start_engine(src.name, src.url, src.url, src.rotate)
     return {"ok": True}
 
 

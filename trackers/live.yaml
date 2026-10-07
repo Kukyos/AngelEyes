@@ -1,0 +1,10 @@
+# ByteTrack for live cameras (config.yaml -> model.live_tracker). Same as Ultralytics' bytetrack.yaml except
+# track_buffer: it counts processed frames (no fps scaling in ultralytics 8.4), and the default 30 is ~2.4 s at the
+# live engine's ~12.5 fps. A phone session gave one person 57 IDs in 467 s (2026-10-07). 150 = ~12 s.
+tracker_type: bytetrack
+track_high_thresh: 0.25
+track_low_thresh: 0.1
+new_track_thresh: 0.25
+track_buffer: 150
+match_thresh: 0.8
+fuse_score: True

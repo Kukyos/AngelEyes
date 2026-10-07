@@ -21,16 +21,13 @@ import numpy as np
 from angelseye import env
 
 PROMPT = (
-    "Top: the whole CCTV view right now. Below it, each labelled person close up, {gap:g} s ago (left) and now (right). "
-    "Faces are blurred on purpose. For each labelled person, name the activity they are doing right now, as a short "
-    "phrase. If they are only sitting, standing or walking with nothing else going on, answer exactly 'idle'. Never "
-    "describe what is absent or not visible, and never mention clothing or things they wear (lanyard, bag strap, "
-    "glasses). Be literal: describe only what you can see. If they hold an object in their hand without visibly using it, say "
-    "'holding <object>'; name an action (e.g. drinking, reading, typing, twisting) only if the hands or body clearly "
-    "show it. Use the two close-ups only to tell whether the hands are moving; never describe what changed between "
-    "them. Mention the visible state of an object when you can see it (e.g. open or closed, full or empty, solved or "
-    "scrambled). At most 10 words each. Never guess identity, gender or age. Reply with JSON only, like "
-    '{{"P1": {{"doing": "holding a scrambled puzzle cube", "confidence": 0.8}}}}. Confidence is 0 to 1.'
+    "Each row shows one labelled person close up, {gap:g} s ago (left) and now (right). A wider picture on top, if "
+    "there is one, is the whole camera view. Faces are blurred on purpose. For each labelled person, say what they are "
+    "doing right now: their posture, then what their hands or body are doing, then the object they hold or use, if "
+    "any. Answer 'idle' only if nothing at all is happening. Describe only what you can actually see; if you cannot "
+    "tell what an object is, call it 'an object'. Never describe what is absent, never mention clothing or things they "
+    "wear, never guess identity, gender or age. At most 10 words each. Reply with JSON only, one key per labelled "
+    'person: {{"P<number>": {{"doing": "<phrase>", "confidence": <0 to 1>}}}}.'
 )
 
 
@@ -68,11 +65,11 @@ class Describer:
         self.key, self.model = env("VISION_API_KEY"), env("VISION_MODEL")
         self.ok = bool(env("VISION_BASE_URL") and self.key and self.model)
         self.frames = []  # (t, labelled whole view, {track id: close-up})
-        self.jobs, self.results = queue.Queue(maxsize=1), queue.Queue()
-        self.busy, self.calls, self.last_sent, self.errors = False, 0, -1e9, 0
+        self.jobs, self.results = queue.Queue(), queue.Queue()
+        self.calls, self.last_sent, self.errors = 0, -1e9, 0
         self.prompt_tokens = self.completion_tokens = 0
         self.cost = 0.0  # as reported by the provider (usage.total_cost), when it reports one
-        if self.ok:
+        for _ in range(self.c["max_in_flight"] if self.ok else 0):
             threading.Thread(target=self._worker, daemon=True).start()
 
     def add_frame(self, t, context, crops):
@@ -82,11 +79,12 @@ class Describer:
             self.frames = self.frames[-2:]
 
     def composite(self):
-        """Whole view on top, then one row per person: close-up a moment ago | close-up now."""
+        """Whole view on top (only with 2+ people), then one row per person: close-up a moment ago | close-up now."""
         (_, _, before), (_, context, now) = self.frames[0], self.frames[-1]
         cw, ch = self.c["context_w"], self.c["crop_h"]
-        top = cv2.resize(context, (cw, int(context.shape[0] * cw / context.shape[1])), interpolation=cv2.INTER_AREA)
-        rows = [top]
+        rows = []
+        if len(now) > 1:  # ponytail: one person's padded close-up carries the detail; the view is only there to tell people apart
+            rows.append(cv2.resize(context, (cw, int(context.shape[0] * cw / context.shape[1])), interpolation=cv2.INTER_AREA))
         for cid in list(now)[:self.c["max_people"]]:
             pair = [c for c in (before.get(cid), now[cid]) if c is not None]
             row = np.hstack([cv2.resize(c, (max(1, int(c.shape[1] * ch / c.shape[0])), ch)) for c in pair])
@@ -98,12 +96,12 @@ class Describer:
 
     def maybe_send(self, t, urgent=False):
         """Ask the model about the newest sample, at most every interval_s (sooner when something changed)."""
-        if not self.ok or self.busy or len(self.frames) < 2 or not self.frames[-1][2]:
+        if not self.ok or self.jobs.unfinished_tasks >= self.c["max_in_flight"] or len(self.frames) < 2 or not self.frames[-1][2]:
             return None
         if t - self.last_sent < (self.c["min_interval_s"] if urgent else self.c["interval_s"]):
             return None
         image = self.composite()
-        self.busy, self.last_sent = True, t
+        self.last_sent = t
         self.jobs.put((t, image))
         return image
 
@@ -143,7 +141,7 @@ class Describer:
                 if self.errors in (1, 10, 100):
                     print(f"describe: model call failed ({e})", flush=True)
             finally:
-                self.busy = False
+                self.jobs.task_done()
 
 
 def demo():

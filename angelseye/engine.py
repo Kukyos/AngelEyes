@@ -42,6 +42,7 @@ BLACK = (0, 0, 0)
 NAMES = {"fall": "FALL", "sudden_run": "SUDDEN RUN", "sos": "SOS", "following": "FOLLOWING", "loitering": "LOITERING",
          "rule": "RULE"}
 FONT = cv2.FONT_HERSHEY_SIMPLEX
+ROTATE = {90: cv2.ROTATE_90_CLOCKWISE, 180: cv2.ROTATE_180, 270: cv2.ROTATE_90_COUNTERCLOCKWISE}
 
 
 def load_camera(cam_id):
@@ -110,12 +111,12 @@ class FramePusher:
     """Sends the newest annotated frame to the hub's live view on its own thread."""
 
     def __init__(self, url):
-        self.url, self.img = url, None
+        self.url, self.img, self.people = url, None, []
         self.ev = threading.Event()
         threading.Thread(target=self._run, daemon=True).start()
 
-    def push(self, img):
-        self.img = img
+    def push(self, img, people):
+        self.img, self.people = img, people
         self.ev.set()
 
     def _run(self):
@@ -124,7 +125,8 @@ class FramePusher:
             self.ev.clear()
             ok, jpg = cv2.imencode(".jpg", self.img, [cv2.IMWRITE_JPEG_QUALITY, 75])
             try:
-                req = urllib.request.Request(self.url, data=jpg.tobytes(), headers={"Content-Type": "image/jpeg"}, method="POST")
+                req = urllib.request.Request(self.url, data=jpg.tobytes(), method="POST", headers={
+                    "Content-Type": "image/jpeg", "X-People": json.dumps(self.people)})
                 urllib.request.urlopen(req, timeout=2).close()
             except OSError:
                 time.sleep(1)
@@ -176,6 +178,11 @@ def even(v):
     return int(v) // 2 * 2
 
 
+def centre_gap(a, b):
+    """Distance between two boxes' centres, in units of the first box's height."""
+    return np.hypot((a[0] + a[2] - b[0] - b[2]) / 2, (a[1] + a[3] - b[1] - b[3]) / 2) / max(a[3] - a[1], 1)
+
+
 def same_activity(a, b, threshold):
     """Two descriptions of the same activity, worded differently ("reading a book" / "reading book")."""
     wa, wb = (set(re.findall(r"[a-z]{3,}", s.lower())) for s in (a, b))
@@ -184,9 +191,10 @@ def same_activity(a, b, threshold):
 
 class Engine:
     def __init__(self, source, camera=None, out=None, hub=None, max_s=None, cfg=None,
-                 live=False, describe=False, name=None):
+                 live=False, describe=False, name=None, rotate=0):
         self.cfg = cfg or load_config()
         self.source, self.hub, self.max_s, self.live = source, hub and hub.rstrip("/"), max_s, live
+        self.rotate = ROTATE.get(rotate)
         self.cam, self.ground = None, None
         if camera:
             self.cam, origin = load_camera(camera)
@@ -210,6 +218,7 @@ class Engine:
                       "running without activity descriptions", file=sys.stderr)
                 self.describer = None
         self.activity, self.present, self.missing, self.strips = {}, set(), {}, {}
+        self.subject, self.n_subjects, self.answered_t = {}, 0, -1e9  # track id -> (subject number, first seen): survives tracker ID switches
         self.pusher = FramePusher(f"{self.hub}/api/live/{self.name}?session={self.idp}") if live and self.hub else None
 
     # --- helpers -------------------------------------------------------------
@@ -314,6 +323,7 @@ class Engine:
         clips = {}  # event key -> [Writer, stop_at or None]
         half = torch.cuda.is_available()
         imgsz = mc["live_imgsz" if self.live else "imgsz"]
+        tracker = str(ROOT / mc["live_tracker"]) if self.live else mc["tracker"]
         min_conf = cfg["sos_pose"]["min_kpt_conf"]
         full = None
         if self.live:
@@ -326,6 +336,8 @@ class Engine:
             for t, frame in self.frames(cap, fps):
                 if self.max_s and t > self.max_s:
                     break
+                if self.rotate is not None:
+                    frame = cv2.rotate(frame, self.rotate)
                 if full is None:  # sizes from the first frame: streams often report none up front
                     H, W = frame.shape[:2]
                     ow = even(cfg["output"]["width"])
@@ -337,7 +349,7 @@ class Engine:
                 if gate and prev_small is not None and cv2.absdiff(small, prev_small).mean() < gate:
                     gated += 1
                 else:
-                    r = model.track(frame, persist=True, tracker=mc["tracker"], imgsz=imgsz, conf=mc["conf"],
+                    r = model.track(frame, persist=True, tracker=tracker, imgsz=imgsz, conf=mc["conf"],
                                     classes=[0], quantize=16 if half else None, verbose=False)[0]
                     boxes = r.boxes.xyxy.cpu().numpy() if r.boxes is not None else np.zeros((0, 4))
                     kps = r.keypoints.data.cpu().numpy() if r.keypoints is not None and len(boxes) else None
@@ -386,7 +398,7 @@ class Engine:
                 full.write(img)
                 ring.append(img)
                 if self.pusher:
-                    self.pusher.push(img)
+                    self.pusher.push(img, self.people(active, t))
                 for key in list(clips):
                     w, stop, _ = clips[key]
                     w.write(img)
@@ -520,7 +532,8 @@ class Engine:
 
     # --- open-ended activity (vision model) ----------------------------------
     def describe_step(self, t, frame, plain, img, active):
-        """Who is in view (entered / left, ignoring tracker ID switches) and what each person is doing."""
+        """Who is in view (ignoring tracker ID switches) and what each person is doing. Arrivals and departures
+        are not logged as events: the live page shows one tile per person in view (people())."""
         c, d = self.cfg["describe"], self.describer
         urgent = False
         for cid in list(self.present):  # someone present but not seen this frame
@@ -533,23 +546,26 @@ class Engine:
             if tr.id in self.present or tr.age() < c["enter_s"] or tr.strong < c["enter_strong"]:
                 continue
             self.present.add(tr.id)
-            if self.missing:  # a person just lost + a new track now = the tracker switched IDs, not a new person
-                old = max(self.missing, key=self.missing.get)
+            urgent = True
+            if self.missing:  # a person just lost + a new track now = the tracker switched IDs: the nearest lost one
+                old = min(self.missing, key=lambda m: centre_gap(self.tracks[m].last.box, tr.last.box))
                 del self.missing[old]
                 self.present.discard(old)
+                self.subject[tr.id] = self.subject.pop(old)
                 tr.caption = self.tracks[old].caption
                 rec = self.activity.pop(old, None)
                 if rec:
                     rec["track_ids"].append(tr.id)
                     self.activity[tr.id] = rec
             else:
-                self.set_activity(tr, "entered the frame", 1.0, t, img, "tracker")
-                urgent = True
+                self.n_subjects += 1
+                self.subject[tr.id] = (self.n_subjects, t)
         for cid, last in list(self.missing.items()):
-            if t - last > c["leave_s"]:
+            # out through a frame edge: gone after leave_s; lost mid-frame (turned away, occluded): wait occluded_s
+            if t - last > c["leave_s" if self.tracks[cid].last.edge else "occluded_s"]:
                 del self.missing[cid]
                 self.present.discard(cid)
-                self.set_activity(self.tracks[cid], "left the frame", 1.0, last, img, "tracker")
+                self.subject.pop(cid, None)
                 self.end_activity(cid, last)
                 urgent = True
         crops = {}
@@ -569,6 +585,9 @@ class Engine:
                 for k in sorted(self.strips)[:-4]:
                     del self.strips[k]
         for t_sent, answers, latency in d.poll():
+            if t_sent < self.answered_t:  # calls overlap (max_in_flight): an older answer never overwrites a newer one
+                continue
+            self.answered_t = t_sent
             image = self.strips.get(t_sent)
             for cid, (phrase, conf) in answers.items():
                 tr = self.tracks.get(cid)
@@ -579,6 +598,17 @@ class Engine:
                 elif tr is not None and cid in self.present:
                     self.set_activity(tr, phrase, conf, t_sent, image if image is not None else img, "vision model",
                                       latency)
+
+    def people(self, active, t):
+        """One entry per person in view, for the live page's tiles. Lost-but-not-gone people stay, marked."""
+        seen = {tr.id for tr in active}
+        out = []
+        for cid in sorted(self.present if self.describer else seen):
+            tr = self.tracks[cid]
+            n, since = self.subject.get(cid, (cid, t))
+            out.append({"id": cid, "subject": n, "doing": tr.caption or tr.label, "flags": tr.flags,
+                        "since": self.iso(since)[11:19], "in_view": cid in seen})
+        return out
 
     def set_activity(self, tr, phrase, conf, t, image, source, latency=None):
         cur = self.activity.get(tr.id)
@@ -673,11 +703,14 @@ def main():
     ap.add_argument("--max-s", type=float, help="stop after this many seconds of video")
     ap.add_argument("--live", action="store_true", help="the source is a live camera (implies --describe)")
     ap.add_argument("--describe", action="store_true", help="describe each person's activity with the vision model")
+    ap.add_argument("--rotate", type=int, default=0, choices=(0, 90, 180, 270),
+                    help="turn each frame clockwise by this much (a phone held upright streams sideways)")
     a = ap.parse_args()
     if len(a.video) > 1 and (a.out or a.camera or a.name or a.live):
         sys.exit("--out, --camera, --name and --live apply to a single source")
     for v in a.video:
-        Engine(v, a.camera, a.out, a.hub, a.max_s, live=a.live, describe=a.describe, name=a.name).run()
+        Engine(v, a.camera, a.out, a.hub, a.max_s, live=a.live, describe=a.describe, name=a.name,
+               rotate=a.rotate).run()
 
 
 if __name__ == "__main__":

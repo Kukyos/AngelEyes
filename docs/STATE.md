@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (branch `mvp2`: Side B setup without a GPU).
+Last updated: 2026-10-07 (branch `mvp2`: live-camera fixes I10).
 
 ---
 
@@ -62,6 +62,11 @@ Last updated: 2026-10-07 (branch `mvp2`: Side B setup without a GPU).
   callers are refused). Webcam page now sends 480 px frames, 3 in flight (it was ~2 fps through ngrok).
   Checked with a fake MJPEG camera; the page itself has not been looked at in a browser yet.
 
+- **Live-camera fixes (I10, `mvp2`):** the phone stream was sideways (the main cause of false "down"/falls,
+  ID churn and dead hand-up rules): Add camera now has a rotate option (`--rotate`). Enter/leave are no longer
+  logged; the Camera page shows one tile per subject. Longer live tracker buffer; prompt no longer leaks
+  "puzzle cube"; 2 vision calls in flight. Checked on a replayed recording only (`IMPROVEMENTS.md` I10).
+
 ## Decided this session
 
 | Decision | Where |
@@ -107,7 +112,8 @@ Last updated: 2026-10-07 (branch `mvp2`: Side B setup without a GPU).
 
 ## First steps for the next session
 
-0. Test watch rules live on the webcam: raise a hand, jump 3×, bend down. Then record those
+0. Re-add the phone camera with **90°** rotation and check tiles, captions, and the hand-up rule live.
+   Then test watch rules live on the webcam: raise a hand, jump 3×, bend down. Then record those
    clips and score them (2.R4). After that comes 2.R2 (YOLOE objects).
 1. Read this file, then `EVALUATION.md` and `DECISIONS.md` D13–D19.
 2. Start: `python -m angelseye.hub`, then the live command in the README, and open
@@ -131,6 +137,7 @@ Last updated: 2026-10-07 (branch `mvp2`: Side B setup without a GPU).
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | Live accuracy (I10) | Phone feed was sideways: `--rotate`, rotate option on Add camera. Subject tiles replace enter/leave log lines. `trackers/live.yaml`, neutral prompt, 2 calls in flight. Replay: down 648→26 frames, IDs 20→14, 0 false alarms, 2.1–2.7 s per call. Not yet live. |
 | 2026-10-07 | Remote teammate testing | I8: token gate, `/webcam` page, ingest → engine auto-start, README section, RESOURCES (ngrok). Curl-checked only. |
 | 2026-10-07 | mvp2 Side B setup | Branch `mvp2`. `requirements-hub.txt`; `data/samples/site/` (9 MEVA runs: events, tracks, keyframes, 4.7 MB, CC-BY attribution); README "Screens only". G506 re-rendered: its false fall (191.9 s, person behind a pillar) still fires. Checked from a fresh clone + fresh venv with hub-only deps. |
 | 2026-10-07 | Watch rules + I5 merge | Merged teammate's `eval/activity-confidence-i5` into `mvp1`. Finished 2.R1: `rules.py` + hub `/api/rules` + Camera rule box + `rule` events. Live compile verified; refusals verified; hub→engine→event verified on UMN (57 pair events/40 s, 0 hand). Fixed `hold_s: 0` from the model. Not yet tried on a real person. |
