@@ -428,8 +428,7 @@ class Engine:
 
                 active = self.update_tracks(frame, boxes, kps, ids, confs, t)
                 hits = self.det.step(active, t)
-                if self.feed and self.feed.rules:
-                    hits += self.watch.step(active, t, self.feed.rules)
+                hits += self.watch.step(active, t, self.feed.rules if self.feed else ())
                 opened, closed = self.book.step(t, hits)
 
                 if cfg["output"]["head_blur"]:
@@ -685,7 +684,7 @@ class Engine:
             for cid, (phrase, conf, rule_answers) in answers.items():
                 tr = self.tracks.get(cid)
                 for rid, yes in rule_answers.items():
-                    self.watch.vision_answer(rid, cid, yes, conf)
+                    self.watch.vision_answer(rid, cid, yes, conf, t_sent)
                     print(f"  VISION P{cid} {rid}: {'yes' if yes else 'no'}", flush=True)
                 if not phrase:
                     continue

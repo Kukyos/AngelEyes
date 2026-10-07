@@ -54,8 +54,9 @@ ngrok http 8000
 
 Send each teammate `https://<ngrok-host>/webcam?token=<HUB_TOKEN>&name=theirname`. They press Start, allow
 the camera, then open `/` → **Camera** and pick their name. Only 2 webcams run at once (one GPU).
-Without `HUB_TOKEN` the gate is off, so never tunnel without it. Raw frames are readable only from the
-host itself; the tunnel sees only blurred output. Each person's vision-model captions use the host's key.
+Without `HUB_TOKEN` the gate is off, so never tunnel without it. With the token set, direct LAN clients
+also need it; only loopback traffic is exempt. Raw frames are readable only from the host itself; the
+tunnel sees only blurred output. Each person's vision-model captions use the host's key.
 
 ## IP cameras (CCTV grid)
 

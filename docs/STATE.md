@@ -63,6 +63,11 @@ Last updated: 2026-10-07 (branch `mvp4` = `mvp3` + demo: Incidents, Ask, choke r
   Checked with a fake MJPEG camera; the page itself has not been looked at in a browser yet.
 
 - **Branch `mvp3`** = `mvp2` + I10 (rotate, subject tiles, tracker memory, prompt fixes). New work goes here.
+- **Branch `dev/mvp3-offline-fixes`** (from `mvp3`): I11 expires old vision-rule yes answers,
+  ignores out-of-order replies and restricts questions to one person. I12 treats direct LAN
+  clients as remote for `HUB_TOKEN` and denies them camera-source endpoints. Offline unit
+  tests pass; neither live model behaviour nor a real tunnel has been checked here. **Merged into `mvp4`**, with
+  `rules.vision_max_age_s` raised 10 → 25 s: at 10 a yes answer that took over 10 s (5.5-17 s measured) was stale on arrival.
 - **Live-camera fixes (I10, `mvp2`/`mvp3`):** the phone stream was sideways (the main cause of false "down"/falls,
   ID churn and dead hand-up rules): Add camera now has a rotate option (`--rotate`). Enter/leave are no longer
   logged; the Camera page shows one tile per subject. Longer live tracker buffer; prompt no longer leaks
@@ -200,6 +205,7 @@ Last updated: 2026-10-07 (branch `mvp4` = `mvp3` + demo: Incidents, Ask, choke r
 |---|---|---|
 | 2026-10-07 | Demo (mvp4) | Incidents tab (verified only, rule broken measured vs limit), Ask (Airouter, scoped, cited, refusals), `hand_on_neck`, visible-thing vision questions, Use webcam, Remove fix, README checked against the PDF. Staged clips: hands ✓✓, pen ✓ when the API is fast, choke ✓ clip 1 / ✗ clip 2. |
 | 2026-10-07 | SafeWalk merge + World streams | Merged `feat/safewalk`; graph to JSON, stdlib Dijkstra, config thresholds, replay-time costs, finished SafeWalk tab. World tab: 12 livestreams, Analyse/Captions toggles (yt-dlp, `--no-describe`), paced HLS reader. Checked in Chrome. |
+| 2026-10-07 | Offline mvp3 guards | Branch `dev/mvp3-offline-fixes`: I11/I12 code and regression tests; 10 unittest cases and rules self-check pass with hub-only dependencies. No camera or real tunnel test on this machine. |
 | 2026-10-07 | mvp3 + rule questions | Branch `mvp3` pushed. D21 caption priorities; 2.R3 vision rules ride the describer call (2 yes in a row). Replay: laptop rule fired, lanyard rule missed. |
 | 2026-10-07 | Live accuracy (I10) | Phone feed was sideways: `--rotate`, rotate option on Add camera. Subject tiles replace enter/leave log lines. `trackers/live.yaml`, neutral prompt, 2 calls in flight. Replay: down 648→26 frames, IDs 20→14, 0 false alarms, 2.1–2.7 s per call. Not yet live. |
 | 2026-10-07 | Remote teammate testing | I8: token gate, `/webcam` page, ingest → engine auto-start, README section, RESOURCES (ngrok). Curl-checked only. |

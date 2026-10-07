@@ -87,7 +87,7 @@ def validate(spec):
         raise ValueError(f"unknown subject {subject!r}")
     if "vision" in spec:  # a yes/no question for the vision model about one person (2.R3)
         q = " ".join(str(spec["vision"]).split())[:200]
-        if subject != "person" or len(q) < 8 or not q.endswith("?"):
+        if subject != "person" or not q.lower().startswith("is this person ") or not q.endswith("?"):
             raise ValueError("a vision rule is one yes/no question about one person")
         m = BANNED.search(q)
         if m:
@@ -208,12 +208,15 @@ class Watch:
         self.since = {}     # (rule id, ids) -> time first true
         self.jumps = {}     # (rule id, track id) -> {"up": bool, "times": deque}
         self.level = {}     # track id -> deque of (t, shoulder y, scale) for the standing level
-        self.yes = {}       # (rule id, track id) -> (consecutive yes answers, model's confidence)
+        self.yes = {}       # (rule id, track id) -> (consecutive yes answers, model's confidence, image time)
 
-    def vision_answer(self, rid, tid, yes, conf):
+    def vision_answer(self, rid, tid, yes, conf, t):
         """The describer's answer to a vision rule's question about one person."""
-        n = self.yes.get((rid, tid), (0, 0))[0]
-        self.yes[(rid, tid)] = (n + 1, conf) if yes else (0, conf)
+        prev = self.yes.get((rid, tid))
+        if prev and t <= prev[2]:
+            return  # overlapping model calls can finish out of order
+        n = prev[0] if prev and t - prev[2] <= self.c["vision_max_age_s"] else 0
+        self.yes[(rid, tid)] = (n + 1, conf, t) if yes else (0, conf, t)
 
     def neck_gap(self, a, b):
         """How far a's nearest visible wrist is from b's neck (mid-shoulders), in b's shoulder widths."""
@@ -290,8 +293,8 @@ class Watch:
             if spec.get("vision"):  # answered by the describer, see vision_answer
                 cands = []
                 for tr in tracks:
-                    n, conf = self.yes.get((rid, tr.id), (0, 0))
-                    if n >= self.c["vision_yes"]:
+                    n, conf, answered_t = self.yes.get((rid, tr.id), (0, 0, -float("inf")))
+                    if n >= self.c["vision_yes"] and t - answered_t <= self.c["vision_max_age_s"]:
                         cands.append(((tr.id,), {"question": spec["vision"], "yes_in_a_row": n}, conf))
             elif spec["subject"] == "pair" and spec["checks"][0]["check"] == "hand_on_neck":
                 cands = []
@@ -333,6 +336,11 @@ class Watch:
         for k in list(self.since):
             if k not in seen:
                 del self.since[k]
+        active_rules = {r["id"] for r in rules}
+        active_tracks = {tr.id for tr in tracks}
+        for key, (_, _, answered_t) in list(self.yes.items()):
+            if key[0] not in active_rules or key[1] not in active_tracks or t - answered_t > self.c["vision_max_age_s"]:
+                del self.yes[key]
         return hits
 
 
@@ -400,12 +408,12 @@ def demo():
              "spec": validate({"subject": "person", "vision": "Is this person holding a knife?"})}
     w, tr = Watch(cfg), Track(7, calibrated=False)
     tr.add(Obs(0.0, (0, 0, 50, 150), pose()))
-    w.vision_answer("r5", 7, True, 0.8)
+    w.vision_answer("r5", 7, True, 0.8, 0.0)
     assert not w.step([tr], 0.0, [knife]), "one yes is not enough"
-    w.vision_answer("r5", 7, True, 0.9)
+    w.vision_answer("r5", 7, True, 0.9, 1.0)
     w.step([tr], 1.0, [knife])
     assert w.step([tr], 2.0, [knife]), "two yes in a row fires (after hold_s)"
-    w.vision_answer("r5", 7, False, 0.9)
+    w.vision_answer("r5", 7, False, 0.9, 3.0)
     assert not w.step([tr], 3.0, [knife]), "a no resets it"
     for q in ("Is this person a woman?", "knife", "Are these two people fighting"):
         try:
