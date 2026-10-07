@@ -82,7 +82,9 @@ Last updated: 2026-10-07 (branch `mvp3`: SafeWalk merged, World tab with public 
   one with yt-dlp and starts an engine with `--no-describe` (tracking, pose, rules, blurred faces, no vision-model
   credit); **Captions** restarts it with the vision model. Analysed streams also show on Camera. The HLS reader is
   paced (segments arrive in bursts): 332 vs 141 distinct frames in 25 s, max gap 1.0 s vs 4.5 s, measured on Sukhumvit.
-  All 12 open in OpenCV at 720p. How well detection works on these scenes is not measured.
+  All 12 open in OpenCV at 720p. Streams run at `streams.imgsz: 1280` (wide scenes, small people; 640 found 0 people
+  in 10 Brasov frames, 1280 found 10). Analyse seen live on Davao and Brasov: boxes, blur, person count on the tile.
+  Distant seated crowds are still missed; false alarms on busy scenes not measured.
 
 ## Decided this session
 
@@ -104,14 +106,15 @@ Last updated: 2026-10-07 (branch `mvp3`: SafeWalk merged, World tab with public 
       falls back to Esri imagery, which works.
 - [ ] Our own staged recordings (`DATA.md` shot list): SOS hand sign, following, loitering
       with ground truth. Following, loitering and SOS have no scored truth yet.
-- [ ] Amber alert and SafeWalk (Stage 4) not started; a routes graph needs OSMnx.
+- [ ] Amber alert (Stage 4) not started. SafeWalk is built (4.21–4.22); its street graph is a fixed export, so a new area needs OSMnx once to regenerate `street_graph.json`.
 - [ ] Older open items from planning still stand: 5 km route, alert channel, offender-registry
       layer, post-hackathon path.
 
 ## Known problems (say them out loud, don't hide them)
 
 - **World tab embeds are not blurred.** Until Analyse is pressed a tile is YouTube's own player (grayscale), so faces
-  show as the channel publishes them. The user accepted this; only the analysed picture is ours and blurred.
+  show as the channel publishes them. Only the analysed picture is ours and blurred. Flagged to the user, who asked for
+  the streams "visible first"; whether unblurred embeds are acceptable under the privacy rule is **not yet confirmed**.
 - **SafeWalk has no brightness for the recorded site** (only live engines push it), so "dark" is the unknown penalty
   everywhere there. Streets without a camera all cost the same, so the safe route only moves where a camera sees an
   alert or an empty street.

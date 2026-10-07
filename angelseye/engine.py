@@ -246,9 +246,10 @@ def same_activity(a, b, threshold):
 
 class Engine:
     def __init__(self, source, camera=None, out=None, hub=None, max_s=None, cfg=None,
-                 live=False, describe=False, name=None, rotate=0):
+                 live=False, describe=False, name=None, rotate=0, imgsz=None):
         self.cfg = cfg or load_config()
         self.source, self.hub, self.max_s, self.live = source, hub and hub.rstrip("/"), max_s, live
+        self.imgsz = imgsz
         self.rotate = ROTATE.get(rotate)
         self.cam, self.ground = None, None
         if camera:
@@ -380,7 +381,7 @@ class Engine:
         ring = deque(maxlen=max(1, int(pad * out_fps)))
         clips = {}  # event key -> [Writer, stop_at or None]
         half = torch.cuda.is_available()
-        imgsz = mc["live_imgsz" if self.live else "imgsz"]
+        imgsz = self.imgsz or mc["live_imgsz" if self.live else "imgsz"]
         tracker = str(ROOT / mc["live_tracker"]) if self.live else mc["tracker"]
         min_conf = cfg["sos_pose"]["min_kpt_conf"]
         full = None
@@ -772,6 +773,7 @@ def main():
     ap.add_argument("--max-s", type=float, help="stop after this many seconds of video")
     ap.add_argument("--live", action="store_true", help="the source is a live camera (implies --describe)")
     ap.add_argument("--describe", action="store_true", help="describe each person's activity with the vision model")
+    ap.add_argument("--imgsz", type=int, help="model input size for this run (overrides config model.imgsz / live_imgsz)")
     ap.add_argument("--no-describe", action="store_true",
                     help="live camera without vision-model calls: tracking, pose and rules only (saves credit)")
     ap.add_argument("--rotate", type=int, default=0, choices=(0, 90, 180, 270),
@@ -782,7 +784,7 @@ def main():
     for v in a.video:
         Engine(v, a.camera, a.out, a.hub, a.max_s, live=a.live,
                describe=(a.describe or a.live) and not a.no_describe, name=a.name,
-               rotate=a.rotate).run()
+               rotate=a.rotate, imgsz=a.imgsz).run()
 
 
 if __name__ == "__main__":

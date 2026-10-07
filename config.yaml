@@ -127,4 +127,6 @@ safewalk:                    # street cost = length * (1 + deserted + dark + inc
   live_max_age_s: 60         # live counts / brightness older than this are dropped
 
 streams:                     # public livestreams on the World tab (data/streams.json), analysed only when switched on
-  max_height: 720            # px; the NL stream is 4K. 720p is plenty at live_imgsz 640
+  max_height: 720            # px; the NL stream is 4K
+  imgsz: 1280                # wide street scenes, small people (like MEVA, unlike a webcam): 10 frames each at 640 vs 1280,
+                             # Brasov 0 vs 10 people found, Davao 10 vs 11; 41-72 vs 24-54 ms/frame on the 4060

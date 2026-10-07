@@ -391,7 +391,8 @@ engines: dict[str, dict] = {}  # camera name -> {"proc": Popen, "url": IP camera
 NAME_RE = r"[\w.-]{1,64}"
 
 
-def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0, describe: bool = True):
+def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0, describe: bool = True,
+                 imgsz: Optional[int] = None):
     """One live engine per camera, run by the hub. Browser webcams and IP cameras share the cap."""
     e = engines.get(name)
     if e and e["proc"].poll() is None:
@@ -402,7 +403,7 @@ def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0, de
     UPLOADS.parent.mkdir(parents=True, exist_ok=True)
     engines[name] = {"url": url, "describe": describe, "proc": subprocess.Popen(
         [sys.executable, "-m", "angelseye.engine", source, "--live", "--name", name, "--hub", f"http://127.0.0.1:{port}",
-         "--rotate", str(rotate)] + ([] if describe else ["--no-describe"]),
+         "--rotate", str(rotate)] + ([] if describe else ["--no-describe"]) + (["--imgsz", str(imgsz)] if imgsz else []),
         cwd=ROOT, stdout=open(UPLOADS.parent / f"cam-{name}.log", "w"), stderr=subprocess.STDOUT)}
 
 
@@ -488,7 +489,8 @@ def stream_analyse(sid: str, a: Analyse, request: Request):
         raise HTTPException(404, "no such stream")
     try:  # YouTube's HLS address expires after some hours, so resolve it at start time, never store it
         import yt_dlp
-        h = load_config()["streams"]["max_height"]
+        sc = load_config()["streams"]
+        h = sc["max_height"]
         with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True,
                                "format": f"bestvideo[height<={h}]/best[height<={h}]"}) as y:
             hls = y.extract_info(c["url"], download=False)["url"]
@@ -500,7 +502,7 @@ def stream_analyse(sid: str, a: Analyse, request: Request):
     if e and e["proc"].poll() is None:
         e["proc"].terminate()
         e["proc"].wait(10)
-    start_engine(sid, hls, c["url"], describe=a.captions)
+    start_engine(sid, hls, c["url"], describe=a.captions, imgsz=sc["imgsz"])
     return {"ok": True}
 
 

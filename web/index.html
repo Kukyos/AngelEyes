@@ -154,7 +154,7 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 .wt { position: relative; aspect-ratio: 16/9; background: #050505; outline: 1px solid var(--line); outline-offset: -1px; overflow: hidden; }
 .wt.sel { outline: 2px solid var(--text); outline-offset: -2px; }
 .wt iframe, .wt img { width: 100%; height: 100%; border: 0; display: block; object-fit: cover; }
-.wt iframe { filter: grayscale(1); pointer-events: none; }
+.wt iframe { filter: grayscale(1); pointer-events: none; transform: scale(1.35); }  /* crops the player's title bar and logo */
 .wt .st { position: absolute; left: 8px; top: 6px; font: 11px var(--mono); background: #000a; padding: 2px 6px; color: var(--text); }
 .wt .bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; align-items: baseline; padding: 16px 8px 6px;
   font: 11px var(--mono); color: var(--dim); background: linear-gradient(#0000, #000d); cursor: pointer; }
@@ -321,7 +321,7 @@ function tick(now) {
   $("#clock").textContent = siteStart ? hms(new Date(siteStart + T * 1000)) : "--:--:--";
   const p = (T / siteEnd * 100) + "%";
   $("#knob").style.left = p; $("#done").style.width = p;
-  if (now - lastSlow > 200) { lastSlow = now; reveal(); updateDots(); if (swT !== null && Math.abs(T - swT) >= 2) refreshSafe(); }
+  if (now - lastSlow > 200) { lastSlow = now; reveal(); updateDots(); if (swT !== null && Math.abs(T - swT) >= 2 && $("#safe").classList.contains("show")) refreshSafe(); }
   requestAnimationFrame(tick);
 }
 
@@ -607,6 +607,8 @@ function pickCam(name) {
   $("#camName").textContent = name; $("#camLog").replaceChildren(); renderNow([]);
   for (const t of document.querySelectorAll(".tile")) t.classList.toggle("sel", t.dataset.name === name);
 }
+// A live picture requested before its first frame can come back broken; ask again (every poll until it shows).
+const revive = (img) => { if (img && img.complete && !img.naturalWidth) img.src = img.src.split("?")[0] + "?r=" + Date.now(); };
 async function pollCam() {
   const list = await j("/api/live").catch(() => null);
   if (list === null) return;                       // hub hiccup: keep what is on screen
@@ -626,6 +628,7 @@ async function pollCam() {
       grid.append(t);
     }
     t.dataset.miss = 0;
+    revive(t.querySelector("img"));
   }
   for (const t of [...grid.querySelectorAll(".tile")])
     if (!seen.has(t.dataset.name) && (t.dataset.miss = +t.dataset.miss + 1) > 3) t.remove();
@@ -872,6 +875,7 @@ async function pollStreams() {
       f.src = `https://www.youtube-nocookie.com/embed/${ytId(s.url)}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0`;
       t.img.replaceWith(f); t.img = null;
     }
+    if (frame) revive(t.img);
     const n = frame ? (frame.people || []).filter((p) => p.in_view).length : 0;
     t.el.querySelector(".st").textContent = frame ? `analysing · ${n} ${n === 1 ? "person" : "people"}${s.captions ? " · captions" : ""}`
       : s.analysing ? "starting…" : "live";
