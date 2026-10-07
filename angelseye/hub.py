@@ -346,8 +346,12 @@ class Source(BaseModel):
 def source_add(src: Source, request: Request):
     """Add an IP camera (e.g. the IP Webcam app: http://PHONE_IP:8080/video). Host only: the hub fetches this URL."""
     host_only(request)
-    if not re.fullmatch(NAME_RE, src.name) or not re.match(r"(https?|rtsp)://\S+$", src.url):
-        raise HTTPException(400, "name: letters/digits only; url must start with http://, https:// or rtsp://")
+    if not re.fullmatch(NAME_RE, src.name):
+        raise HTTPException(400, "Type a name for the camera (letters, digits, - or _, no spaces)")
+    if not re.match(r"(https?|rtsp)://\S+$", src.url):
+        raise HTTPException(400, "The URL must start with http://, https:// or rtsp://")
+    if re.fullmatch(r"https?://[^/]+/?", src.url):  # IP Webcam serves its stream at /video
+        src.url = src.url.rstrip("/") + "/video"
     start_engine(src.name, src.url, src.url)
     return {"ok": True}
 

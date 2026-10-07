@@ -570,7 +570,7 @@ $("#srcForm").onsubmit = async (ev) => {
   const r = await fetch("/api/sources", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: $("#srcName").value.trim(), url: $("#srcUrl").value.trim() }) });
   const msg = r.ok ? "Starting… the tile appears in about 30 s." : (await r.json().catch(() => ({}))).detail || "could not add";
-  $("#srcMsg").textContent = typeof msg === "string" ? msg : "name: letters/digits only; url must start with http://";
+  $("#srcMsg").textContent = typeof msg === "string" ? msg : "Check the name and the URL";
   if (r.ok) { $("#srcName").value = ""; $("#srcUrl").value = ""; }
 };
 function camText(e) {
