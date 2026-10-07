@@ -193,6 +193,9 @@ live: dict[str, tuple[float, bytes, str]] = {}  # camera name -> (time, newest a
 # Camera counts for SafeWalk: {camera: {"count": int, "ts": float}}
 camera_counts: dict[str, dict] = {}
 
+# Camera brightness for SafeWalk: {camera: {"brightness": float, "ts": float}}
+camera_brightness: dict[str, dict] = {}
+
 
 @app.post("/api/counts/{camera}")
 async def push_count(camera: str, request: Request):
@@ -209,6 +212,23 @@ def get_counts():
     now = time.time()
     return {cam: {"count": v["count"], "age_s": round(now - v["ts"], 1)}
             for cam, v in camera_counts.items() if now - v["ts"] < 60}
+
+
+@app.post("/api/brightness/{camera}")
+async def push_brightness(camera: str, request: Request):
+    """Engine posts rolling frame brightness (0-255) for a camera."""
+    data = await request.json()
+    brightness = float(data.get("brightness", 0))
+    camera_brightness[camera] = {"brightness": brightness, "ts": time.time()}
+    return {"ok": True}
+
+
+@app.get("/api/brightness")
+def get_brightness():
+    """Rolling 60s frame brightness per camera."""
+    now = time.time()
+    return {cam: {"brightness": round(v["brightness"], 1), "age_s": round(now - v["ts"], 1)}
+            for cam, v in camera_brightness.items() if now - v["ts"] < 60}
 
 
 @app.post("/api/live/{name}")

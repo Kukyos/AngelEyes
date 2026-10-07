@@ -102,8 +102,8 @@ something only verified in theory.
 | 4.12 | Gate sign-off: run bench on G506, write final numbers, tick TASKS 3.1 + 3.4 | Jerem | ☑ 1.33 fps CPU, 0.1 streams @10fps, device=cpu |
 | 4.13 | Download OSMnx graph for MEVA bbox -> data/street_graph.pkl | Jerem | ☑ 189 nodes, 490 edges (walk network) |
 | 4.14 | Camera->edge mapping: snap 9 MEVA cameras to nearest graph edges; add edge_id, street_name to cameras.json | Jerem | ☑ 11 cameras mapped to edges (all unnamed in OSM) |
-| 4.15 | Hub: /api/counts endpoint returning rolling 60s people count per camera | Jerem | ☐ |
-| 4.16 | Engine: push rolling frame-brightness per camera to hub (for "dark" cost) | Jerem | ☐ |
+| 4.15 | Hub: /api/counts endpoint returning rolling 60s people count per camera | Jerem | ☑ POST /api/counts/{camera} + GET /api/counts; engine CountPusher |
+| 4.16 | Engine: push rolling frame-brightness per camera to hub (for "dark" cost) | Jerem | ☑ POST /api/brightness/{camera} + GET /api/brightness; engine BrightnessPusher |
 | 4.17 | Safewalk engine: angelseye/safewalk.py - A* with dynamic cost length x (1 + deserted + dark + incident) | Jerem | ☐ |
 | 4.18 | Globe: two route polylines (fastest=grey, safest=green), heatmap raster (deserted/dark), incident pins | Jerem | ☐ |
 | 4.19 | UI: route picker (origin/dest click on globe), toggle fastest/safest, legend | Jerem | ☐ |
