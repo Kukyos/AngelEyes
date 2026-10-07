@@ -86,6 +86,8 @@ something only verified in theory.
 | I2 | Cut vision-model tokens: send only on change, back off on repeated answers, smaller image; measure from `vlm` stats | | ☐ |
 | I3 | Ghost subjects: show/use a track only after strong detections + visible keypoints; check false alarms in `eval` | | ☐ |
 | I4 | Vision-model latency 3–14 s: faster model or fewer people per call | | ☐ |
+| I6 | One person drawn as several on live cameras (1280 upscale) → `model.live_imgsz: 640` | kukyos | ◐ webcam: 1 box, 1 ID per frame; phone stream not rechecked |
+| I7 | Non-events in the log (idle captions, clothing, desk loitering) | kukyos | ◐ built on `mvp1`; idle handling seen live, not scored |
 | I5 | Check the model's self-reported confidence against labelled clips before alerting on it | | ☐ |
 
 ## Stage 4 — Side B

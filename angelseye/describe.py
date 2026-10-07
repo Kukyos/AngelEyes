@@ -23,7 +23,9 @@ from angelseye import env
 PROMPT = (
     "Top: the whole CCTV view right now. Below it, each labelled person close up, {gap:g} s ago (left) and now (right). "
     "Faces are blurred on purpose. For each labelled person, name the activity they are doing right now, as a short "
-    "phrase. Be literal: describe only what you can see. If they hold an object without visibly using it, say "
+    "phrase. If they are only sitting, standing or walking with nothing else going on, answer exactly 'idle'. Never "
+    "describe what is absent or not visible, and never mention clothing or things they wear (lanyard, bag strap, "
+    "glasses). Be literal: describe only what you can see. If they hold an object in their hand without visibly using it, say "
     "'holding <object>'; name an action (e.g. drinking, reading, typing, twisting) only if the hands or body clearly "
     "show it. Use the two close-ups only to tell whether the hands are moving; never describe what changed between "
     "them. Mention the visible state of an object when you can see it (e.g. open or closed, full or empty, solved or "

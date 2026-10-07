@@ -182,7 +182,7 @@ class Detectors:
 
     def loitering(self, tr, t):
         c = self.c["loitering"]
-        if tr.age() < c["min_s"]:
+        if tr.age() < c["min_s"] or (c["require_calibrated"] and not tr.calibrated):
             return None
         ts, xy = tr.path(t - c["min_s"], t)
         if len(xy) < 5 or ts[0] > t - c["min_s"] + 2:  # needs the whole window observed

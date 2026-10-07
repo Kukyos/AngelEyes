@@ -9,6 +9,32 @@ Written 2026-10-07 from the live phone-camera sessions and the code at commit `8
 
 ---
 
+## I6 — One person drawn as several people (live camera) — FIXED on `mvp1`
+
+**Seen** (laptop webcam, 2026-10-07, `runs/laptop/tracks.jsonl`): one person at a desk came
+out as 3 boxes in 56% of frames; 2,851 of 3,189 boxes sat >60% inside another box; 18 track
+IDs for one person. Each fake person got its own "entered/left", its own vision-model
+description and its own loitering alarm. The phone run (`runs/phone`) shows the same: 2
+nested boxes in 63 of 78 frames. **This was the biggest source of I1's false enters/leaves.**
+
+**Cause:** `imgsz: 1280` upscales a 640×480 webcam frame 2×; the pose model then finds
+3–5 "people" per frame, all fragments of one, at confidence up to 0.94, so no confidence
+threshold removes them. Measured on 60 webcam frames: 1280 → 2–5 boxes per frame; 640 →
+exactly 1 box in 60/60 frames. Dropping nested boxes at 1280 only got 24–44 of 60 frames
+right.
+
+**Fix:** `model.live_imgsz: 640` for live cameras; file runs keep 1280 (small far people,
+e.g. UMN, need it; eval numbers unchanged). Live webcam after the fix: 1 box and 1 track ID
+per frame. Still to check on the phone stream.
+
+## I7 — The log was full of non-events — FIXED on `mvp1`
+
+"standing still, no visible object or motion", "holding a lanyard" (worn, not held), and
+LOITERING for someone sitting at a desk. Fixes: the vision model answers `idle` when
+nothing is going on and idle answers are not logged; the prompt forbids describing absence
+or clothing; loitering needs a calibrated camera (`loitering.require_calibrated`); a box
+cut off by the frame is labelled `still`/`moving`, not `standing`.
+
 ## I1 — False "entered the frame" / "left the frame" (live camera)
 
 **Seen.** Watching the phone camera live, people were reported entering and leaving while

@@ -309,6 +309,7 @@ class Engine:
         ring = deque(maxlen=max(1, int(pad * out_fps)))
         clips = {}  # event key -> [Writer, stop_at or None]
         half = torch.cuda.is_available()
+        imgsz = mc["live_imgsz" if self.live else "imgsz"]
         min_conf = cfg["sos_pose"]["min_kpt_conf"]
         full = None
         if self.live:
@@ -332,7 +333,7 @@ class Engine:
                 if gate and prev_small is not None and cv2.absdiff(small, prev_small).mean() < gate:
                     gated += 1
                 else:
-                    r = model.track(frame, persist=True, tracker=mc["tracker"], imgsz=mc["imgsz"], conf=mc["conf"],
+                    r = model.track(frame, persist=True, tracker=mc["tracker"], imgsz=imgsz, conf=mc["conf"],
                                     classes=[0], quantize=16 if half else None, verbose=False)[0]
                     boxes = r.boxes.xyxy.cpu().numpy() if r.boxes is not None else np.zeros((0, 4))
                     kps = r.keypoints.data.cpu().numpy() if r.keypoints is not None and len(boxes) else None
@@ -418,7 +419,7 @@ class Engine:
             "video": str(self.source), "camera": self.name, "start": self.iso(0), "fps": round(out_fps, 3),
             "duration_s": round(t, 2), "frames_analysed": n, "frames_gated": gated,
             "processing_s": round(elapsed, 2), "analysed_fps": round(n / max(elapsed, 1e-6), 2),
-            "model": mc["weights"], "imgsz": mc["imgsz"], "device": "cuda" if half else "cpu",
+            "model": mc["weights"], "imgsz": imgsz, "device": "cuda" if half else "cpu",
             "vlm": self.describer.stats() if self.describer else None,
             "events": sorted(self.records.values(), key=lambda r: r["t_start"]),
         }
@@ -475,6 +476,8 @@ class Engine:
             v = tr.speed(t)
             if tr.id in self.det.down_since:
                 tr.label = "down"
+            elif tr.last.edge:  # cut off by the frame (e.g. at a desk): posture unknown, only motion
+                tr.label = "still" if v <= lab["standing_max_mps" + sfx] else "moving"
             elif v <= lab["standing_max_mps" + sfx]:
                 tr.label = "standing"
             elif v <= lab["walking_max_mps" + sfx]:
@@ -560,7 +563,11 @@ class Engine:
             image = self.strips.get(t_sent)
             for cid, (phrase, conf) in answers.items():
                 tr = self.tracks.get(cid)
-                if tr is not None and cid in self.present:
+                if tr is not None and phrase == "idle":  # nothing happening: not an event; end what they were doing
+                    tr.caption = ""
+                    if self.activity.get(cid, {}).get("evidence", {}).get("series", {}).get("source") == "vision model":
+                        self.end_activity(cid, t_sent)
+                elif tr is not None and cid in self.present:
                     self.set_activity(tr, phrase, conf, t_sent, image if image is not None else img, "vision model",
                                       latency)
 

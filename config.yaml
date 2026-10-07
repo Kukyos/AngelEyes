@@ -5,6 +5,8 @@
 model:
   weights: yolo11m-pose.pt   # in models/ (see README); m found the most people in our checks
   imgsz: 1280                # MEVA people are 30-80 px tall at 1080p, UMN is 320 px wide: 640 misses them
+  live_imgsz: 640            # live cameras: people are close and large. At 1280 a 640x480 webcam frame is upscaled
+                             # and one person comes out as 3-5 nested boxes (conf up to 0.94); at 640: 1 box in 60/60 frames
   conf: 0.1                  # low-score boxes feed ByteTrack's second association pass (keeps blurred
                              # runners on their track); new tracks still need tracker new_track_thresh
   draw_conf: 0.25            # untracked boxes below this are blurred but not drawn
@@ -41,6 +43,7 @@ labels:                      # per-person activity label shown on the footage
 loitering:
   radius_m: 3.0
   min_s: 60
+  require_calibrated: true   # pixel-space dwell is meaningless on a close-up (someone at a desk "loiters" in 60 s)
 
 fall:
   wide_ratio: 1.15           # box width / height once down
