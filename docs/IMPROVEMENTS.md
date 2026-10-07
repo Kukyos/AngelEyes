@@ -47,7 +47,10 @@ example in the prompt.
 **Fixes:** `--rotate` / the Add camera 90° option; `trackers/live.yaml` (`track_buffer: 150`); "left" after
 `leave_s` only from a frame edge, else `occluded_s`; ID-switch merge picks the nearest lost person;
 entered/left are no longer events, the page shows one tile per subject from the engine (`X-People` with each
-frame → `/api/live` → `people`); neutral prompt that asks for posture + hands + object; `max_in_flight: 2`.
+frame → `/api/live` → `people`); neutral prompt that asks for posture + hands + every held object; `max_in_flight: 2`.
+The I7 ban on clothing is lifted: the model also returns `wearing` (clothing colours + accessories), shown on
+the subject tile only, never logged as an event. Appearance, not face, is what the amber search needs (ARCHITECTURE).
+Replay: "striped shirt, blue lanyard", "holding a blue pen"; 2.7–3.3 s per call, 416 prompt tokens.
 
 **Measured** (90 s of that session replayed with `--rotate 90`; the replay is the annotated recording, so
 it carries the old overlays): `down` frames 648 → 26; IDs 20 → 14; 0 falls/runs (5 before); 20 calls at

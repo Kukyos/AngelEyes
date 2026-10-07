@@ -218,7 +218,7 @@ class Engine:
                       "running without activity descriptions", file=sys.stderr)
                 self.describer = None
         self.activity, self.present, self.missing, self.strips = {}, set(), {}, {}
-        self.subject, self.n_subjects, self.answered_t = {}, 0, -1e9  # track id -> (subject number, first seen): survives tracker ID switches
+        self.subject, self.n_subjects, self.answered_t, self.wearing = {}, 0, -1e9, {}  # track id -> (subject number, first seen): survives tracker ID switches
         self.pusher = FramePusher(f"{self.hub}/api/live/{self.name}?session={self.idp}") if live and self.hub else None
 
     # --- helpers -------------------------------------------------------------
@@ -552,6 +552,8 @@ class Engine:
                 del self.missing[old]
                 self.present.discard(old)
                 self.subject[tr.id] = self.subject.pop(old)
+                if old in self.wearing:
+                    self.wearing[tr.id] = self.wearing.pop(old)
                 tr.caption = self.tracks[old].caption
                 rec = self.activity.pop(old, None)
                 if rec:
@@ -566,6 +568,7 @@ class Engine:
                 del self.missing[cid]
                 self.present.discard(cid)
                 self.subject.pop(cid, None)
+                self.wearing.pop(cid, None)
                 self.end_activity(cid, last)
                 urgent = True
         crops = {}
@@ -589,8 +592,10 @@ class Engine:
                 continue
             self.answered_t = t_sent
             image = self.strips.get(t_sent)
-            for cid, (phrase, conf) in answers.items():
+            for cid, (phrase, conf, wearing) in answers.items():
                 tr = self.tracks.get(cid)
+                if wearing and cid in self.present:  # tile only, not logged: it barely changes
+                    self.wearing[cid] = wearing
                 if tr is not None and phrase == "idle":  # nothing happening: not an event; end what they were doing
                     tr.caption = ""
                     if self.activity.get(cid, {}).get("evidence", {}).get("series", {}).get("source") == "vision model":
@@ -606,7 +611,8 @@ class Engine:
         for cid in sorted(self.present if self.describer else seen):
             tr = self.tracks[cid]
             n, since = self.subject.get(cid, (cid, t))
-            out.append({"id": cid, "subject": n, "doing": tr.caption or tr.label, "flags": tr.flags,
+            out.append({"id": cid, "subject": n, "doing": tr.caption or tr.label, "wearing": self.wearing.get(cid, ""),
+                        "flags": tr.flags,
                         "since": self.iso(since)[11:19], "in_view": cid in seen})
         return out
 

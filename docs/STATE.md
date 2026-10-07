@@ -65,7 +65,8 @@ Last updated: 2026-10-07 (branch `mvp2`: live-camera fixes I10).
 - **Live-camera fixes (I10, `mvp2`):** the phone stream was sideways (the main cause of false "down"/falls,
   ID churn and dead hand-up rules): Add camera now has a rotate option (`--rotate`). Enter/leave are no longer
   logged; the Camera page shows one tile per subject. Longer live tracker buffer; prompt no longer leaks
-  "puzzle cube"; 2 vision calls in flight. Checked on a replayed recording only (`IMPROVEMENTS.md` I10).
+  "puzzle cube"; 2 vision calls in flight. Tiles also show what each person is wearing (clothing, accessories;
+  never gender/age/face); the I7 clothing ban is lifted for the tile only. Checked on a replayed recording only (`IMPROVEMENTS.md` I10).
 
 ## Decided this session
 

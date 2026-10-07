@@ -131,6 +131,7 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 .who.alert { border-color: var(--text); }
 .who .p { font: 12px var(--mono); color: var(--dim); display: flex; justify-content: space-between; }
 .who .d { font-size: 17px; line-height: 1.25; font-weight: 500; }
+.who .w { font-size: 12px; color: var(--dim); }
 .who .f { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .who .s { font: 11px var(--mono); color: var(--faint); }
 .log { display: grid; grid-template-columns: 64px 36px 1fr; gap: 8px; padding: 6px 16px; font-size: 13px; animation: enter .4s var(--ease); }
@@ -614,7 +615,7 @@ function renderNow(people) {
     row.classList.toggle("gone", !p.in_view);
     row.classList.toggle("alert", p.flags.length > 0);
     const html = `<span class="p"><span>P${p.id}</span><span>${p.in_view ? "" : "out of view"}</span></span>` +
-      `<span class="d">${esc(p.doing || "in view")}</span>` + p.flags.map((f) => `<span class="f">${esc(f)}</span>`).join("") +
+      `<span class="d">${esc(p.doing || "in view")}</span>` + (p.wearing ? `<span class="w">${esc(p.wearing)}</span>` : "") + p.flags.map((f) => `<span class="f">${esc(f)}</span>`).join("") +
       `<span class="s">since ${esc(p.since)}</span>`;
     if (row.innerHTML !== html) row.innerHTML = html;
   }

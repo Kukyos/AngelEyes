@@ -22,17 +22,18 @@ from angelseye import env
 
 PROMPT = (
     "Each row shows one labelled person close up, {gap:g} s ago (left) and now (right). A wider picture on top, if "
-    "there is one, is the whole camera view. Faces are blurred on purpose. For each labelled person, say what they are "
-    "doing right now: their posture, then what their hands or body are doing, then the object they hold or use, if "
-    "any. Answer 'idle' only if nothing at all is happening. Describe only what you can actually see; if you cannot "
-    "tell what an object is, call it 'an object'. Never describe what is absent, never mention clothing or things they "
-    "wear, never guess identity, gender or age. At most 10 words each. Reply with JSON only, one key per labelled "
-    'person: {{"P<number>": {{"doing": "<phrase>", "confidence": <0 to 1>}}}}.'
+    "there is one, is the whole camera view. Faces are blurred on purpose. For each labelled person give two things. "
+    "'doing': what they are doing right now: their posture, then what their hands or body are doing, then every object "
+    "in their hands, however small, named as specifically as you can see it. Answer 'idle' only if nothing at all is "
+    "happening. 'wearing': visible clothing with colours, plus accessories (bag, glasses, watch, cap, lanyard). "
+    "Describe only what you can actually see; if you cannot tell what an object is, call it 'an object'. Never "
+    "describe what is absent, never guess identity, gender or age. At most 12 words each. Reply with JSON only, one "
+    'key per labelled person: {{"P<number>": {{"doing": "<phrase>", "wearing": "<phrase>", "confidence": <0 to 1>}}}}.'
 )
 
 
 def parse(text):
-    """The model's reply -> {track_id: (phrase, confidence)}. Tolerates code fences and prose around the JSON."""
+    """The model's reply -> {track_id: (phrase, confidence, wearing)}. Tolerates code fences and prose around the JSON."""
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
         return {}
@@ -47,14 +48,15 @@ def parse(text):
             continue
         if isinstance(v, dict):
             phrase, conf = str(v.get("doing", "")).strip(), v.get("confidence", 0.5)
+            wearing = str(v.get("wearing") or "").strip().rstrip(".").lower()
         else:
-            phrase, conf = str(v).strip(), 0.5
+            phrase, conf, wearing = str(v).strip(), 0.5, ""
         try:
             conf = min(max(float(conf), 0.0), 1.0)
         except (TypeError, ValueError):
             conf = 0.5
         if phrase:
-            out[int(tid)] = (phrase.rstrip(".").lower(), conf)
+            out[int(tid)] = (phrase.rstrip(".").lower(), conf, wearing)
     return out
 
 
@@ -121,7 +123,7 @@ class Describer:
             t, strip = self.jobs.get()
             try:
                 ok, jpg = cv2.imencode(".jpg", strip, [cv2.IMWRITE_JPEG_QUALITY, 80])
-                body = {"model": self.model, "max_tokens": 200, "temperature": 0.2, "messages": [{"role": "user", "content": [
+                body = {"model": self.model, "max_tokens": 400, "temperature": 0.2, "messages": [{"role": "user", "content": [
                     {"type": "text", "text": PROMPT.format(gap=self.c["frame_gap_s"])},
                     {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + base64.b64encode(jpg).decode()}}]}]}
                 req = urllib.request.Request(self.url, data=json.dumps(body).encode(), headers={
@@ -145,8 +147,9 @@ class Describer:
 
 
 def demo():
-    assert parse('```json\n{"P1": {"doing": "Reading a book.", "confidence": 0.9}}\n```') == {1: ("reading a book", 0.9)}
-    assert parse('{"P12": "walking"}') == {12: ("walking", 0.5)}
+    assert parse('```json\n{"P1": {"doing": "Reading a book.", "confidence": 0.9}}\n```') == {1: ("reading a book", 0.9, "")}
+    assert parse('{"P12": "walking"}') == {12: ("walking", 0.5, "")}
+    assert parse('{"P2": {"doing": "sitting", "wearing": "Red cap.", "confidence": 1}}') == {2: ("sitting", 1.0, "red cap")}
     assert parse("no idea") == {} and parse('{"P3": {"doing": ""}}') == {}
 
 
