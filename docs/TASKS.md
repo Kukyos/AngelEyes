@@ -86,7 +86,7 @@ something only verified in theory.
 | I2 | Cut vision-model tokens: send only on change, back off on repeated answers, smaller image; measure from `vlm` stats | | ☐ |
 | I3 | Ghost subjects: show/use a track only after strong detections + visible keypoints; check false alarms in `eval` | | ☐ |
 | I4 | Vision-model latency 3–14 s: faster model or fewer people per call | | ☐ |
-| I5 | Check the model's self-reported confidence against labelled clips before alerting on it | jonathan-16bit | ☐ |
+| I5 | Check the model's self-reported confidence against labelled clips before alerting on it | jonathan-16bit | ◐ offline evaluator and review protocol built; labelled clips and calibration decision still needed |
 
 ## Stage 4 — Side B
 
