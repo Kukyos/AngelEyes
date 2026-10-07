@@ -38,6 +38,22 @@ are too big for the repo), upload, the live Camera feed and rule compiling (thos
 full install below and `VISION_*` in `.env`). The page talks to the hub only through
 `/api/cameras`, `/api/events`, `/api/tracks/{camera}`, `/api/config` and `/ws`.
 
+## Teammates test through the host (no install)
+
+The host (GPU machine) runs the hub, and a tunnel gives everyone else an https link. Their webcam
+frames go to the host's engine; they see the annotated, face-blurred result on **Camera**.
+
+```bash
+# host: any long random string as the token
+HUB_TOKEN=pick-a-long-random-string .venv/Scripts/python.exe -m angelseye.hub --port 8000   # PowerShell: $env:HUB_TOKEN="..."
+ngrok http 8000
+```
+
+Send each teammate `https://<ngrok-host>/webcam?token=<HUB_TOKEN>&name=theirname`. They press Start, allow
+the camera, then open `/` → **Camera** and pick their name. Only 2 webcams run at once (one GPU).
+Without `HUB_TOKEN` the gate is off, so never tunnel without it. Raw frames are readable only from the
+host itself; the tunnel sees only blurred output. Each person's vision-model captions use the host's key.
+
 ## Run it
 
 Windows, Python 3.12, an NVIDIA GPU (CPU works, slower), ffmpeg on PATH.

@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Webcam</title>
+<style>body{font:16px system-ui;background:#000;color:#fff;margin:0;padding:16px}video{width:100%;max-width:640px;display:block;margin:12px 0}
+input,button{font:inherit;padding:8px}button{background:#fff;color:#000;border:0}</style>
+<h3>Send my webcam to the engine</h3>
+<p>Your video goes to the engine on the host machine. Then open <a href="/" style="color:#fff">Camera</a> to see the annotated, face-blurred result.</p>
+<input id="n" placeholder="your name (letters, no spaces)"> <button id="go">Start</button> <span id="st"></span>
+<video id="v" autoplay playsinline muted></video><canvas id="c" hidden></canvas>
+<script>
+const $=id=>document.getElementById(id);
+$("n").value=new URLSearchParams(location.search).get("name")||localStorage.getItem("webcamName")||"";
+$("go").onclick=async()=>{
+  const name=$("n").value.trim().replace(/[^\w.-]/g,"").slice(0,64);
+  if(!name){$("st").textContent="enter a name";return}
+  try{localStorage.setItem("webcamName",name)}catch(e){}
+  $("go").disabled=true;
+  $("v").srcObject=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});
+  const v=$("v"),c=$("c"),x=c.getContext("2d");
+  for(;;){  // one frame in flight at a time, ~8 fps
+    await new Promise(r=>setTimeout(r,120));
+    if(!v.videoWidth)continue;
+    c.width=v.videoWidth;c.height=v.videoHeight;x.drawImage(v,0,0);
+    const b=await new Promise(r=>c.toBlob(r,"image/jpeg",0.7));
+    const r=await fetch("/api/ingest/"+name,{method:"POST",body:b}).catch(()=>null);
+    $("st").textContent=r&&r.ok?"sending as "+name:r?"refused: "+(await r.text()):"connection lost, retrying";
+  }
+};
+</script>

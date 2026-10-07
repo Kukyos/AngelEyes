@@ -106,6 +106,39 @@ clients: set[WebSocket] = set()
 jobs: dict[str, dict] = {}
 
 
+class Gate:
+    """Tunnel traffic (it carries X-Forwarded-For) needs HUB_TOKEN, as ?token= once (sets a cookie) or the cookie.
+    Local traffic (the engine, you on localhost) is not asked. No HUB_TOKEN set = no gate."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        token = env("HUB_TOKEN")
+        if token and scope["type"] in ("http", "websocket") and any(k == b"x-forwarded-for" for k, _ in scope["headers"]):
+            hdr = {k.decode(): v.decode() for k, v in scope["headers"]}
+            cookie = dict(c.strip().partition("=")[::2] for c in hdr.get("cookie", "").split(";") if c)
+            given = dict(q.partition("=")[::2] for q in scope["query_string"].decode().split("&") if q).get("token")
+            if token not in (given, cookie.get("hub_token")):
+                if scope["type"] == "websocket":
+                    await send({"type": "websocket.close", "code": 1008})
+                else:
+                    await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"text/plain")]})
+                    await send({"type": "http.response.body", "body": b"hub token needed: open the link you were given"})
+                return
+            if given == token and scope["type"] == "http":
+                inner_send = send
+
+                async def send(msg):  # noqa: F811
+                    if msg["type"] == "http.response.start":
+                        msg["headers"] = list(msg["headers"]) + [(b"set-cookie", f"hub_token={token}; Path=/; HttpOnly; Secure; SameSite=Lax".encode())]
+                    await inner_send(msg)
+        await self.inner(scope, receive, send)
+
+
+app.add_middleware(Gate)
+
+
 @app.get("/api/config")
 def config():
     return {"cesium_token": env("CESIUM_ION_TOKEN")}
@@ -250,18 +283,55 @@ def live_list():
     return [{"name": k, "age_s": round(now - t, 1), "session": ses} for k, (t, _, ses) in live.items() if now - t < 10]
 
 
-@app.get("/api/live/{name}/stream")
-async def live_stream(name: str, request: Request):
+def mjpeg(store: dict, name: str, request: Request):
     async def frames():
         sent = None
         while not await request.is_disconnected():
-            item = live.get(name)
+            item = store.get(name)
             if item and item[0] != sent:
                 sent = item[0]
                 head = f"--f\r\nContent-Type: image/jpeg\r\nContent-Length: {len(item[1])}\r\n\r\n".encode()
                 yield head + item[1] + b"\r\n"
             await asyncio.sleep(0.03)
     return StreamingResponse(frames(), media_type="multipart/x-mixed-replace; boundary=f", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/live/{name}/stream")
+async def live_stream(name: str, request: Request):
+    return mjpeg(live, name, request)
+
+
+# A teammate's browser webcam (/webcam) posts raw frames here; only the engine on this machine may read them
+# back (loopback), so unblurred faces never leave. The engine's annotated, blurred output appears under /api/live.
+ingest: dict[str, tuple[float, bytes, str]] = {}
+ingest_procs: dict[str, subprocess.Popen] = {}
+MAX_REMOTE_ENGINES = 2
+
+
+@app.post("/api/ingest/{name}")
+async def ingest_push(name: str, request: Request):
+    body = await request.body()
+    if not re.fullmatch(r"[\w.-]{1,64}", name) or not body or len(body) > 3_000_000:
+        raise HTTPException(400, "bad frame")
+    ingest[name] = (time.time(), body, "")
+    p = ingest_procs.get(name)
+    if p is None or p.poll() is not None:
+        if sum(q.poll() is None for q in ingest_procs.values()) >= MAX_REMOTE_ENGINES:
+            raise HTTPException(503, f"{MAX_REMOTE_ENGINES} remote webcams already running; wait for one to stop")
+        port = app.state.port
+        UPLOADS.parent.mkdir(parents=True, exist_ok=True)
+        ingest_procs[name] = subprocess.Popen(
+            [sys.executable, "-m", "angelseye.engine", f"http://127.0.0.1:{port}/api/ingest/{name}/stream", "--live",
+             "--name", name, "--hub", f"http://127.0.0.1:{port}"],
+            cwd=ROOT, stdout=open(UPLOADS.parent / f"ingest-{name}.log", "w"), stderr=subprocess.STDOUT)
+    return {"ok": True}
+
+
+@app.get("/api/ingest/{name}/stream")
+async def ingest_stream(name: str, request: Request):
+    if "x-forwarded-for" in request.headers:
+        raise HTTPException(403, "raw frames are local only")
+    return mjpeg(ingest, name, request)
 
 
 @app.post("/api/upload")
@@ -311,6 +381,11 @@ NO_CACHE = {"Cache-Control": "no-store"}  # pages change while we build; never s
 @app.get("/")
 def index():
     return FileResponse(WEB / "index.html", headers=NO_CACHE)
+
+
+@app.get("/webcam")
+def webcam():
+    return FileResponse(WEB / "webcam.html", headers=NO_CACHE)
 
 
 @app.get("/responder")

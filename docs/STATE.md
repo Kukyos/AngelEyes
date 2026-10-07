@@ -51,6 +51,12 @@ Last updated: 2026-10-07 (branch `mvp2`: Side B setup without a GPU).
 - **I5 merged:** `eval/activity-confidence-i5` (teammate) is merged into `mvp1`:
   `angelseye/eval_activity.py`, `docs/I5_CONFIDENCE_EVALUATION.md`, `tests/test_eval_activity.py`.
 
+- **Remote testing (I8, `mvp2`):** teammates open `/webcam?token=…` through an ngrok link, their browser
+  webcam goes to the hub (`/api/ingest/{name}`), the hub starts an engine on the host for it, and the
+  annotated feed appears on Camera. `HUB_TOKEN` gates tunnel traffic (requests with `X-Forwarded-For`);
+  local traffic is exempt. Checked with curl (gate 401/200, raw stream 403 via tunnel, engine started,
+  `/api/live` listed it). **Not yet tried through real ngrok with a real webcam.**
+
 ## Decided this session
 
 | Decision | Where |
@@ -120,6 +126,7 @@ Last updated: 2026-10-07 (branch `mvp2`: Side B setup without a GPU).
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | Remote teammate testing | I8: token gate, `/webcam` page, ingest → engine auto-start, README section, RESOURCES (ngrok). Curl-checked only. |
 | 2026-10-07 | mvp2 Side B setup | Branch `mvp2`. `requirements-hub.txt`; `data/samples/site/` (9 MEVA runs: events, tracks, keyframes, 4.7 MB, CC-BY attribution); README "Screens only". G506 re-rendered: its false fall (191.9 s, person behind a pillar) still fires. Checked from a fresh clone + fresh venv with hub-only deps. |
 | 2026-10-07 | Watch rules + I5 merge | Merged teammate's `eval/activity-confidence-i5` into `mvp1`. Finished 2.R1: `rules.py` + hub `/api/rules` + Camera rule box + `rule` events. Live compile verified; refusals verified; hub→engine→event verified on UMN (57 pair events/40 s, 0 hand). Fixed `hold_s: 0` from the model. Not yet tried on a real person. |
 | 2026-10-07 | Street test data | TfL JamCam API live (890 cams). Engine runs a JamCam MP4 straight from its URL, no code: Piccadilly Circus, 131 frames, 10.8 fps, people tracked, 0 events. No new resources added. |

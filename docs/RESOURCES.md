@@ -57,5 +57,6 @@ everything.
 | Cesium World Terrain + ion imagery | Cesium ion terms (free account token in `.env`) | Ground the cameras and people sit on |
 | PyTorch (CUDA 12.8 wheels) | BSD-3 | Runs the pose model on the GPU |
 | FastAPI, Uvicorn, python-multipart, PyYAML, lap | MIT / BSD / Apache | Hub, uploads, config, tracker assignment |
+| ngrok (host-side tunnel, free tier; user's own install, not a repo dependency) | ngrok terms | Gives teammates an https link to the host's hub so they can send their webcam and watch the result |
 | FFmpeg (system install) | LGPL/GPL | H.264 output browsers can play |
 | Esri World Imagery tiles | Esri terms; attribution "Esri, Maxar, Earthstar Geographics" shown on the map | Map imagery when the Cesium token is not valid for the page's address |
