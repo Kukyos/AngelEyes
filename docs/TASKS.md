@@ -91,14 +91,14 @@ something only verified in theory.
 | 4.1 | Amber: per-track crops, CLIP embeddings, colours, height (A) | | ☐ |
 | 4.2 | Amber: search API, case ID, audit log, path + next-camera prediction (D) | | ☐ |
 | 4.3 | Amber: path on the globe (C) | | ☐ |
-| 4.4 | SafeWalk: edge costs from counts, brightness, incidents (B) | | ☐ |
-| 4.5 | SafeWalk: fastest vs safest route + heatmap on the globe (C) | | ☐ |
+| 4.4 | SafeWalk: edge costs from counts, brightness, incidents (B) | Jerem | ☑ via 4.15-4.17 (cost fn in safewalk.py) |
+| 4.5 | SafeWalk: fastest vs safest route + heatmap on the globe (C) | Jerem | ☑ via 4.18-4.19 (SafeWalk tab, dual routes) |
 | 4.6 | Gemini confirmation and narration of candidate events (D) | solo | ◐ superseded in spirit by D19: Qwen3-VL describes activity live; event confirmation not built |
 | 4.7 | Plain-English questions over events (Groq + SQL tools) | | ☐ |
 | 4.8 | Encirclement behaviour | | ☐ |
 | 4.9 | TfL JamCams live crowd layer | | ☐ |
 | 4.10 | Route decision: use MEVA Muscatatuck town streets as 5 km demo route | Jerem | ☑ |
-| 4.11 | Responder channel: ntfy.sh; add NTFY_TOPIC to .env | Jerem | ☐ |
+| 4.11 | Responder channel: ntfy.sh; add NTFY_TOPIC to .env | Jerem | ☑ NTFY_TOPIC=angelseye-alerts in .env |
 | 4.12 | Gate sign-off: run bench on G506, write final numbers, tick TASKS 3.1 + 3.4 | Jerem | ☑ 1.33 fps CPU, 0.1 streams @10fps, device=cpu |
 | 4.13 | Download OSMnx graph for MEVA bbox -> data/street_graph.pkl | Jerem | ☑ 189 nodes, 490 edges (walk network) |
 | 4.14 | Camera->edge mapping: snap 9 MEVA cameras to nearest graph edges; add edge_id, street_name to cameras.json | Jerem | ☑ 11 cameras mapped to edges (all unnamed in OSM) |
