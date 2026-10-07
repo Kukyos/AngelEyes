@@ -120,6 +120,7 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
   <button id="tabCam" class="on">Camera</button>
   <button id="tabSite">Site</button>
   <button id="tabClips">Clips</button>
+  <button id="tabSafe">SafeWalk</button>
   <span class="sp"></span>
   <span id="clock" class="num">--:--:--</span>
   <button id="play" title="Play / pause (space)"><svg viewBox="0 0 12 12"><path id="playIcon" d="M2 1h3v10H2zM7 1h3v10H7z"/></svg></button>
@@ -157,6 +158,38 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
     <div class="list" id="runlist"></div></div>
   <div id="player">Select a clip</div>
   <div class="col"><div class="head"><span>Events</span></div><div class="list" id="clipEvents"></div></div>
+</main>
+
+<main id="safe">
+  <div id="safeSide" style="display:grid;grid-template-rows:auto minmax(0,1fr);border-right:1px solid var(--line);min-width:280px">
+    <div class="head"><span>SafeWalk</span></div>
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:8px">
+        <button id="safeOrigin" style="flex:1;padding:8px;background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:4px">Set Origin</button>
+        <button id="safeDest" style="flex:1;padding:8px;background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:4px">Set Destination</button>
+      </div>
+      <div id="safeMode" style="display:flex;gap:8px">
+        <button class="on" data-mode="fastest" style="flex:1;padding:8px;background:var(--text);color:#000;border:0;border-radius:4px">Fastest</button>
+        <button data-mode="safest" style="flex:1;padding:8px;background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:4px">Safest</button>
+        <button data-mode="both" style="flex:1;padding:8px;background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:4px">Both</button>
+      </div>
+      <div id="safeHeatmap" style="display:flex;gap:8px">
+        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)">
+          <input type="checkbox" id="hmDeserted" checked> Deserted
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)">
+          <input type="checkbox" id="hmDark"> Dark
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)">
+          <input type="checkbox" id="hmIncident"> Incidents
+        </label>
+      </div>
+      <button id="safeGo" style="padding:10px;background:var(--text);color:#000;border:0;border-radius:4px;font-weight:600">Calculate Route</button>
+      <div id="safeResult" style="font:11px var(--mono);color:var(--dim);min-height:40px"></div>
+    </div>
+    <div class="list" style="max-height:200px;overflow:auto" id="safeLegend"></div>
+  </div>
+  <div id="safeGlobe" style="position:relative;min-height:0;background:#000"></div>
 </main>
 
 <div id="toast"></div>
@@ -482,16 +515,20 @@ $("#drop").ondrop = (e) => { e.preventDefault(); $("#drop").classList.remove("ov
 
 function tab(which) {
   const site = which === "site";
-  for (const [b, w] of [["#tabCam", "cam"], ["#tabSite", "site"], ["#tabClips", "clips"]]) $(b).classList.toggle("on", which === w);
+  const safe = which === "safe";
+  for (const [b, w] of [["#tabCam", "cam"], ["#tabSite", "site"], ["#tabClips", "clips"], ["#tabSafe", "safe"]]) $(b).classList.toggle("on", which === w);
   $("#site").style.display = site ? "grid" : "none"; document.querySelector("footer").style.display = site ? "flex" : "none";
   $("#clips").classList.toggle("show", which === "clips");
   $("#cam").classList.toggle("show", which === "cam");
+  $("#safe").classList.toggle("show", safe);
   for (const x of ["#clock", "#play", "#spd"]) $(x).style.visibility = site ? "visible" : "hidden";
-  if (!site) { setPlaying(false); closeFocus(); } else setPlaying(true);
+  if (!site && !safe) { setPlaying(false); closeFocus(); } else setPlaying(true);
+  if (safe) initSafeWalk();
 }
 $("#tabCam").onclick = () => tab("cam");
 $("#tabSite").onclick = () => tab("site");
 $("#tabClips").onclick = () => tab("clips");
+$("#tabSafe").onclick = () => tab("safe");
 
 // ---------------- live camera ----------------
 // The log only ever grows at the top; rows are created once and updated in place.
@@ -556,6 +593,190 @@ function renderNow() {
 }
 setInterval(pollCam, 2000);
 pollCam();
+
+// ---------------- SafeWalk ----------------
+let safeViewer = null, safeOrigin = null, safeDest = null, safeMode = "both";
+let safeHeatLayers = {deserted: null, dark: null, incident: null};
+
+async function initSafeWalk() {
+  if (safeViewer) return;
+  // Create a separate Cesium viewer for SafeWalk tab
+  const token = (await j("/api/config").catch(() => ({})))?.cesium_token;
+  const ionOk = token && await fetch(`https://api.cesium.com/v1/assets/1/endpoint?access_token=${token}`).then(r => r.ok).catch(() => false);
+  const opts = {
+    animation: false, timeline: false, baseLayerPicker: false, geocoder: false, homeButton: false,
+    sceneModePicker: false, navigationHelpButton: false, infoBox: false, selectionIndicator: false, fullscreenButton: false,
+    skyBox: false, skyAtmosphere: false, contextOptions: {webgl: {alpha: false}}
+  };
+  if (ionOk) { Cesium.Ion.defaultAccessToken = token; opts.terrain = Cesium.Terrain.fromWorldTerrain(); }
+  else opts.baseLayer = new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({
+    url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", maximumLevel: 19 }));
+  safeViewer = new Cesium.Viewer("safeGlobe", opts);
+  safeViewer.scene.backgroundColor = Cesium.Color.BLACK;
+  for (const k of ["sun", "moon", "skyBox", "skyAtmosphere"]) if (safeViewer.scene[k]) safeViewer.scene[k].show = false;
+  safeViewer.scene.fog.enabled = false;
+  safeViewer.scene.globe.baseColor = Cesium.Color.BLACK;
+  safeViewer.scene.globe.showGroundAtmosphere = false;
+  safeViewer.scene.globe.enableLighting = false;
+  const base = safeViewer.imageryLayers.get(0);
+  if (base) { base.saturation = 0; base.brightness = 0.75; base.contrast = 1.15; }
+
+  // Load cameras for context
+  const reg = await j("/api/cameras").catch(() => ({cameras: []}));
+  for (const c of reg.cameras) {
+    if (!c.run) continue;
+    safeViewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(c.lon, c.lat),
+      point: {pixelSize: 5, color: Cesium.Color.WHITE, outlineColor: Cesium.Color.BLACK, outlineWidth: 1},
+      label: {show: true, text: c.id, font: "10px monospace", pixelOffset: new Cesium.Cartesian2(0, -13), fillColor: Cesium.Color.WHITE,
+        showBackground: true, backgroundColor: Cesium.Color.BLACK.withAlpha(.55)}
+    });
+  }
+
+  // Click handlers for origin/dest
+  const handler = new Cesium.ScreenSpaceEventHandler(safeViewer.scene.canvas);
+  handler.setInputAction(async (movement) => {
+    const pick = safeViewer.scene.pick(movement.position);
+    const cartesian = safeViewer.scene.globe.pick(safeViewer.camera.getPickRay(movement.position), safeViewer.scene);
+    if (!cartesian) return;
+    const carto = Cesium.Cartographic.fromCartesian(cartesian);
+    const lat = Cesium.Math.toDegrees(carto.latitude);
+    const lon = Cesium.Math.toDegrees(carto.longitude);
+
+    if (safeOrigin === null) {
+      safeOrigin = {lat, lon};
+      $("#safeOrigin").textContent = `Origin: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      $("#safeOrigin").style.background = "var(--text)";
+      $("#safeOrigin").style.color = "#000";
+    } else if (safeDest === null) {
+      safeDest = {lat, lon};
+      $("#safeDest").textContent = `Dest: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      $("#safeDest").style.background = "var(--text)";
+      $("#safeDest").style.color = "#000";
+    } else {
+      safeOrigin = {lat, lon};
+      safeDest = null;
+      $("#safeOrigin").textContent = `Origin: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      $("#safeOrigin").style.background = "var(--text)";
+      $("#safeOrigin").style.color = "#000";
+      $("#safeDest").textContent = "Set Destination";
+      $("#safeDest").style.background = "var(--hover)";
+      $("#safeDest").style.color = "var(--text)";
+      clearSafeRoutes();
+    }
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+  // Mode buttons
+  for (const btn of $$("#safeMode button")) {
+    btn.onclick = () => {
+      safeMode = btn.dataset.mode;
+      for (const b of $$("#safeMode button")) b.classList.toggle("on", b === btn);
+    };
+  }
+
+  // Heatmap checkboxes
+  for (const id of ["hmDeserted", "hmDark", "hmIncident"]) {
+    $(`#${id}`).onchange = () => updateHeatmap();
+  }
+
+  // Go button
+  $("#safeGo").onclick = async () => {
+    if (!safeOrigin || !safeDest) {
+      $("#safeResult").textContent = "Set both origin and destination first";
+      return;
+    }
+    await calculateRoute();
+  };
+}
+
+function clearSafeRoutes() {
+  if (!safeViewer) return;
+  for (const e of safeViewer.entities.values()) {
+    if (e.properties?.kind?.getValue() === "route") safeViewer.entities.remove(e);
+  }
+  for (const layer of Object.values(safeHeatLayers)) {
+    if (layer) { safeViewer.imageryLayers.remove(layer, true); safeHeatLayers[layer] = null; }
+  }
+  $("#safeResult").textContent = "";
+}
+
+async function calculateRoute() {
+  clearSafeRoutes();
+  $("#safeResult").textContent = "Calculating...";
+  try {
+    const res = await j(`/api/safewalk?origin_lat=${safeOrigin.lat}&origin_lon=${safeOrigin.lon}&dest_lat=${safeDest.lat}&dest_lon=${safeDest.lon}`);
+    drawRoute(res.fastest, Cesium.Color.GREY, "fastest");
+    drawRoute(res.safest, Cesium.Color.LIME, "safest");
+    drawHeatmap(res.heatmap);
+    const fastLen = pathLength(res.fastest);
+    const safeLen = pathLength(res.safest);
+    $("#safeResult").innerHTML = `Fastest: ${fastLen.toFixed(1)} km<br>Safest: ${safeLen.toFixed(1)} km<br>Detour: ${((safeLen - fastLen) / fastLen * 100).toFixed(1)}%`;
+  } catch (e) {
+    $("#safeResult").textContent = "Route failed: " + e.message;
+  }
+}
+
+function drawRoute(coords, color, kind) {
+  if (!safeViewer || !coords?.length) return;
+  const positions = coords.flatMap(([la, lo]) => [lo, la, 10]);
+  safeViewer.entities.add({
+    polyline: {positions: Cesium.Cartesian3.fromDegreesArrayHeights(positions), width: 4, material: color, clampToGround: true},
+    properties: {kind: "route", type: kind}
+  });
+  // Start/end markers
+  const [sla, slo] = coords[0];
+  const [ela, elo] = coords[coords.length - 1];
+  safeViewer.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(slo, sla, 20),
+    point: {pixelSize: 10, color: color, outlineColor: Cesium.Color.BLACK, outlineWidth: 2},
+    label: {text: kind === "fastest" ? "Start (Fast)" : "Start (Safe)", font: "11px monospace", fillColor: color, pixelOffset: new Cesium.Cartesian2(0, -18)}
+  });
+  safeViewer.entities.add({
+    position: Cesium.Cartesian3.fromDegrees(elo, ela, 20),
+    point: {pixelSize: 10, color: color, outlineColor: Cesium.Color.BLACK, outlineWidth: 2},
+    label: {text: "Destination", font: "11px monospace", fillColor: color, pixelOffset: new Cesium.Cartesian2(0, -18)}
+  });
+  // Fly to route
+  safeViewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(slo, sla, 500),
+    orientation: {pitch: Cesium.Math.toRadians(-45)}, duration: 1.5
+  });
+}
+
+function pathLength(coords) {
+  if (!coords?.length) return 0;
+  let d = 0;
+  for (let i = 1; i < coords.length; i++) {
+    const [la1, lo1] = coords[i-1], [la2, lo2] = coords[i];
+    const R = 6371;
+    const phi1 = la1 * Math.PI / 180, phi2 = la2 * Math.PI / 180;
+    const dphi = (la2 - la1) * Math.PI / 180, dlambda = (lo2 - lo1) * Math.PI / 180;
+    const a = Math.sin(dphi/2)**2 + Math.cos(phi1)*Math.cos(phi2)*Math.sin(dlambda/2)**2;
+    d += 2 * R * Math.asin(Math.sqrt(a));
+  }
+  return d;
+}
+
+function drawHeatmap(hm) {
+  if (!safeViewer || !hm) return;
+  // For now, just log - proper heatmap would need custom imagery provider
+  console.log("Heatmap data:", Object.keys(hm).map(k => `${k}: ${hm[k].length} edges`));
+  // Build legend
+  const box = $("#safeLegend");
+  box.replaceChildren();
+  for (const [name, color] of [["Deserted", "#888"], ["Dark", "#444"], ["Incident", "#f88"], ["Total", "#fff"]]) {
+    const row = el("div", "", `<span style="display:inline-block;width:12px;height:12px;background:${color};margin-right:8px"></span>${name}`);
+    box.append(row);
+  }
+}
+
+async function updateHeatmap() {
+  // Recalculate route to refresh heatmap
+  if (safeOrigin && safeDest) await calculateRoute();
+}
+
+$$ = (s) => Array.from(document.querySelectorAll(s));
+
 tab("cam");
 
 boot();
