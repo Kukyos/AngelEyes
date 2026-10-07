@@ -65,7 +65,7 @@ something only verified in theory.
 | 2.D2 | Alert card; responder phone page | solo | ☑ toast + responder page (`/responder`) |
 | 2.R1 | Watch rules: admin types a rule ("flag if a person raises their hand") → compiled to pose/object/pair checks (`angelseye/rules.py`), hub `/api/rules`, rule box on the Camera page, `rule` events (D20) | kukyos | ◐ compile→confirm→hub→engine→event runs end to end; refusals work live; hand_up/jump only pass synthetic checks, no real true positive yet (2.R4); pair rule floods crowds |
 | 2.R2 | Watch rules: YOLOE open-vocab objects for person–object rules, at a reduced rate; fps cost from `angelseye.bench` | kukyos | ☐ |
-| 2.R3 | Watch rules: gated vision-model yes/no for rules geometry can't express (prefilter first, 2 consecutive yes) | kukyos | ☐ |
+| 2.R3 | Watch rules: gated vision-model yes/no for rules geometry can't express (prefilter first, 2 consecutive yes) | kukyos | ◐ compiles to a yes/no question, asked inside the describer call (D21); replay: "holding a laptop" fired (4 yes), "wearing a lanyard" missed; not live yet |
 | 2.R4 | Watch rules: record + label clips (raise hand, jump ×3, bend down, one person–person, one person–object) and score in `angelseye.eval` | kukyos | ☐ |
 | 2.D3 | Upload-a-video mode → events JSON + annotated video | solo | ◐ built (Clips → drop a video); not yet exercised end to end in the browser |
 
@@ -83,7 +83,7 @@ something only verified in theory.
 | # | Task | Owner | Done |
 |---|---|---|---|
 | I1 | False "entered"/"left" on the live camera: tracker buffer, merge by position + colour, "left" only at a frame edge; ground-truth clip + score in `eval` | kukyos | ◐ `trackers/live.yaml` (buffer 150), nearest-position merge, edge/occluded leave, enter/leave no longer logged (tiles instead), `--rotate`. Colour merge, ground truth + score open |
-| I10 | Live page: one tile per subject; rotate option on Add camera; prompt example leak ("puzzle cube") removed | kukyos | ◐ replayed recording only; not yet on the live phone |
+| I10 | Live page: one tile per subject; rotate option on Add camera; prompt example leak ("puzzle cube") removed; caption priorities (D21) | kukyos | ◐ replayed recording only; not yet on the live phone |
 | I2 | Cut vision-model tokens: send only on change, back off on repeated answers, smaller image; measure from `vlm` stats | | ☐ |
 | I3 | Ghost subjects: show/use a track only after strong detections + visible keypoints; check false alarms in `eval` | | ☐ |
 | I4 | Vision-model latency 3–14 s: faster model or fewer people per call | kukyos | ◐ no context strip for one person, `crop_h` 240, 2 calls in flight: 2.1–2.7 s on one 90 s replay (was median 7.7 s); not yet live |

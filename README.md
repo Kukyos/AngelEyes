@@ -64,6 +64,8 @@ people and log on the right, **Remove** to stop it. The phone must be reachable 
 **Phone held upright?** IP Webcam streams it sideways: pick **90°** next to the URL (the engine's `--rotate`).
 Sideways people read as lying down (false falls), track badly, and hand-up rules can't fire.
 The right panel shows one tile per person in view, kept across tracker ID switches.
+Watch rules can be poses ("raises a hand") or anything visible on one person ("anyone holding a knife",
+"someone in a red jacket"): the second kind becomes a yes/no question for the vision model and fires after 2 yes in a row.
 
 ## Run it
 

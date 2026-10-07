@@ -13,7 +13,12 @@ Spec:
 
 Checks (person): hand_up {side: either|both|left|right, above: head|shoulder},
 bent_over {min_deg}, jump {times, within_s}. Checks (pair): near {max_m}.
-Objects (2.R2) and anything geometry can't express (2.R3) are refused for now.
+
+What geometry can't express but one person visibly shows (clothing, what they hold or do with an
+object) compiles to a yes/no question instead (2.R3):
+    {"subject": "person", "vision": "Is this person holding a knife?", "summary": "..."}
+The question rides on the live describer's regular call (no extra calls) and the rule fires after
+rules.vision_yes consecutive yes answers for that person.
 """
 import json
 import re
@@ -55,9 +60,12 @@ Person checks in one rule all have to be true at once. A pair rule has exactly o
 Leave optional numbers out unless the rule states them.
 
 Reply {{"subject": ..., "checks": [...], "hold_s": ..., "summary": "<the rule in plain words, as checked>"}}.
-If the rule needs anything else (objects, clothing, sounds, places, counting people, what someone is
-holding, emotions) or concerns gender, age, identity, faces or a named person, reply
-{{"unsupported": "<short reason>"}}.
+If the rule instead needs something visible on one person that these checks can't measure (what they wear,
+what they hold, what they do with an object), reply
+{{"subject": "person", "vision": "<one yes/no question about a single person, starting 'Is this person'>",
+"summary": "<the rule in plain words>"}}.
+If the rule needs anything else (sounds, places, counting people, emotions) or concerns gender, age,
+identity, faces or a named person, reply {{"unsupported": "<short reason>"}}.
 
 Rule: {text}"""
 
@@ -69,6 +77,15 @@ def validate(spec):
     subject = spec.get("subject")
     if subject not in CHECKS:
         raise ValueError(f"unknown subject {subject!r}")
+    if "vision" in spec:  # a yes/no question for the vision model about one person (2.R3)
+        q = " ".join(str(spec["vision"]).split())[:200]
+        if subject != "person" or len(q) < 8 or not q.endswith("?"):
+            raise ValueError("a vision rule is one yes/no question about one person")
+        m = BANNED.search(q)
+        if m:
+            raise ValueError(f"questions about gender, age, identity or faces are not allowed ('{m.group(0)}')")
+        return {"subject": "person", "vision": q, "checks": [], "hold_s": None,
+                "summary": str(spec.get("summary") or q).strip()[:200]}
     checks = spec.get("checks")
     if not isinstance(checks, list) or not 1 <= len(checks) <= 4:
         raise ValueError("needs 1-4 checks")
@@ -181,6 +198,12 @@ class Watch:
         self.since = {}     # (rule id, ids) -> time first true
         self.jumps = {}     # (rule id, track id) -> {"up": bool, "times": deque}
         self.level = {}     # track id -> deque of (t, shoulder y, scale) for the standing level
+        self.yes = {}       # (rule id, track id) -> (consecutive yes answers, model's confidence)
+
+    def vision_answer(self, rid, tid, yes, conf):
+        """The describer's answer to a vision rule's question about one person."""
+        n = self.yes.get((rid, tid), (0, 0))[0]
+        self.yes[(rid, tid)] = (n + 1, conf) if yes else (0, conf)
 
     def hand_up(self, tr, chk):
         kp, mc = tr.last.kp, self.c["min_kpt_conf"]
@@ -244,7 +267,13 @@ class Watch:
         mc = self.c["min_kpt_conf"]
         for rule in rules:
             spec, rid = rule["spec"], rule["id"]
-            if spec["subject"] == "pair":
+            if spec.get("vision"):  # answered by the describer, see vision_answer
+                cands = []
+                for tr in tracks:
+                    n, conf = self.yes.get((rid, tr.id), (0, 0))
+                    if n >= self.c["vision_yes"]:
+                        cands.append(((tr.id,), {"question": spec["vision"], "yes_in_a_row": n}, conf))
+            elif spec["subject"] == "pair":
                 max_m = spec["checks"][0].get("max_m", self.c["near_m"])
                 cands = []
                 for i, a in enumerate(tracks):
@@ -270,7 +299,8 @@ class Watch:
                     continue
                 hits.append(Hit("rule", ids, t0, round(conf, 2), {
                     "rule_id": rid, "rule_text": rule["text"], "spec": spec, "signals": signals,
-                    "held_s": round(t - t0, 1), "confidence_is": "keypoint visibility"}))
+                    "held_s": round(t - t0, 1),
+                    "confidence_is": "self-reported by the vision model" if spec.get("vision") else "keypoint visibility"}))
         for k in list(self.since):
             if k not in seen:
                 del self.since[k]
@@ -328,6 +358,24 @@ def demo():
     assert run([near], [lambda t, i: pose(dx=60 * i)] * 20, n_tracks=2), "people 0.3 m apart must fire"
     assert not run([near], [lambda t, i: pose(dx=600 * i)] * 20, n_tracks=2), "people 3 m apart must not fire"
 
+    knife = {"id": "r5", "text": "someone holding a knife",
+             "spec": validate({"subject": "person", "vision": "Is this person holding a knife?"})}
+    w, tr = Watch(cfg), Track(7, calibrated=False)
+    tr.add(Obs(0.0, (0, 0, 50, 150), pose()))
+    w.vision_answer("r5", 7, True, 0.8)
+    assert not w.step([tr], 0.0, [knife]), "one yes is not enough"
+    w.vision_answer("r5", 7, True, 0.9)
+    w.step([tr], 1.0, [knife])
+    assert w.step([tr], 2.0, [knife]), "two yes in a row fires (after hold_s)"
+    w.vision_answer("r5", 7, False, 0.9)
+    assert not w.step([tr], 3.0, [knife]), "a no resets it"
+    for q in ("Is this person a woman?", "knife", "Are these two people fighting"):
+        try:
+            validate({"subject": "person", "vision": q})
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted vision question {q!r}")
+
     for bad in ({"subject": "person", "checks": [{"check": "holding", "object": "knife"}]},
                 {"subject": "person", "checks": [{"check": "near"}]},
                 {"subject": "person", "checks": [{"check": "jump", "times": 500}]},
@@ -343,6 +391,7 @@ def demo():
         "hold_s 0 means the config default"
     assert parse_reply('```json\n{"unsupported": "needs objects"}\n```')["error"].startswith("not supported")
     assert parse_reply('{"subject": "person", "checks": [{"check": "hand_up", "side": "left"}], "summary": "x"}')["spec"]
+    assert parse_reply('{"subject": "person", "vision": "Is this person wearing a red jacket?"}')["spec"]["vision"]
 
 
 if __name__ == "__main__":

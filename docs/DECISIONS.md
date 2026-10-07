@@ -220,6 +220,19 @@ person–object relations, and it is detected accurately without inventing peopl
 - **Privacy:** only frames with heads already blurred leave the machine. The close-up
   blur was resized for near faces after the first live test showed a readable face.
 
+## D21 — What the describer says, by priority (2026-10-07)
+
+User direction: colours and other looks are stated only when a rule asks for them; objects only when
+the person is doing something with them or they matter (valuable, or could hurt someone).
+
+- **Default caption:** posture, then what the hands or body do, then an object only if used, handled,
+  valuable or dangerous. No clothing, colours or looks. (Replaces the short-lived "wearing" tile line.)
+- **Looks and objects come from rules:** a rule geometry can't check ("anyone holding a laptop",
+  "someone wearing a lanyard") compiles to one yes/no question about one person (2.R3). It rides on the
+  describer's regular call, so it costs no extra calls; it fires after `rules.vision_yes` (2) yes answers in a row.
+  D20's "cheap prefilter" is not needed for this: no call is made only for the rule.
+- Gender, age, identity and faces stay refused in rule text and in the compiled question.
+
 ## Still open
 
 Tracked in `STATE.md` → "Not decided".

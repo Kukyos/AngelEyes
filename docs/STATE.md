@@ -66,8 +66,9 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
 - **Live-camera fixes (I10, `mvp2`/`mvp3`):** the phone stream was sideways (the main cause of false "down"/falls,
   ID churn and dead hand-up rules): Add camera now has a rotate option (`--rotate`). Enter/leave are no longer
   logged; the Camera page shows one tile per subject. Longer live tracker buffer; prompt no longer leaks
-  "puzzle cube"; 2 vision calls in flight. Tiles also show what each person is wearing (clothing, accessories;
-  never gender/age/face); the I7 clothing ban is lifted for the tile only. Checked on a replayed recording only (`IMPROVEMENTS.md` I10).
+  "puzzle cube"; 2 vision calls in flight. Captions by priority (D21): objects only when used, valuable
+  or dangerous; looks only through a rule. Rules geometry can't check compile to a yes/no question asked inside
+  the describer call (2.R3): "holding a laptop" fired on the replay, "wearing a lanyard" missed. Checked on a replayed recording only (`IMPROVEMENTS.md` I10).
 
 ## Decided this session
 
@@ -114,7 +115,8 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
 
 ## First steps for the next session
 
-0. Re-add the phone camera with **90°** rotation and check tiles, captions, and the hand-up rule live.
+0. Re-add the phone camera with **90°** rotation and check tiles, captions, the hand-up rule and one vision rule
+   ("anyone holding a phone") live. The lanyard miss needs a look: try a larger crop_h for vision rules.
    Then test watch rules live on the webcam: raise a hand, jump 3×, bend down. Then record those
    clips and score them (2.R4). After that comes 2.R2 (YOLOE objects).
 1. Read this file, then `EVALUATION.md` and `DECISIONS.md` D13–D19.
@@ -139,6 +141,7 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | mvp3 + rule questions | Branch `mvp3` pushed. D21 caption priorities; 2.R3 vision rules ride the describer call (2 yes in a row). Replay: laptop rule fired, lanyard rule missed. |
 | 2026-10-07 | Live accuracy (I10) | Phone feed was sideways: `--rotate`, rotate option on Add camera. Subject tiles replace enter/leave log lines. `trackers/live.yaml`, neutral prompt, 2 calls in flight. Replay: down 648→26 frames, IDs 20→14, 0 false alarms, 2.1–2.7 s per call. Not yet live. |
 | 2026-10-07 | Remote teammate testing | I8: token gate, `/webcam` page, ingest → engine auto-start, README section, RESOURCES (ngrok). Curl-checked only. |
 | 2026-10-07 | mvp2 Side B setup | Branch `mvp2`. `requirements-hub.txt`; `data/samples/site/` (9 MEVA runs: events, tracks, keyframes, 4.7 MB, CC-BY attribution); README "Screens only". G506 re-rendered: its false fall (191.9 s, person behind a pillar) still fires. Checked from a fresh clone + fresh venv with hub-only deps. |
