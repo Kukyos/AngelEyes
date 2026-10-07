@@ -53,6 +53,9 @@ Last updated: 2026-10-07 (docs synced to `main` from `mvp2`).
   snapshot (87 MB > the 50 MB samples limit), so the grid tiles stay black; map, dots and pins work.
 - **I5 merged:** `eval/activity-confidence-i5` (teammate) is merged into `mvp1`:
   `angelseye/eval_activity.py`, `docs/I5_CONFIDENCE_EVALUATION.md`, `tests/test_eval_activity.py`.
+- **While I5 waits for labels:** I2 change detection/backoff logic can be built with
+  synthetic sequences on a separate branch. Final token/cost and caption-quality
+  measurements should follow I1/I3 integration and use the same recorded input.
 
 ## Decided this session
 
@@ -123,6 +126,7 @@ Last updated: 2026-10-07 (docs synced to `main` from `mvp2`).
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | I5 handoff on main | Recorded the pushed `eval/activity-confidence-i5` tooling, its missing labels and calibration decision, and I2 work that can proceed independently. Docs only; no evaluator code merged. |
 | 2026-10-07 | Docs sync to main | Copied README and `docs/` from `mvp2` to `main` so main's docs match everything done. No code moved. |
 | 2026-10-07 | mvp2 Side B setup | Branch `mvp2`. `requirements-hub.txt`; `data/samples/site/` (9 MEVA runs: events, tracks, keyframes, 4.7 MB, CC-BY attribution); README "Screens only". G506 re-rendered: its false fall (191.9 s, person behind a pillar) still fires. Checked from a fresh clone + fresh venv with hub-only deps. |
 | 2026-10-07 | Watch rules + I5 merge | Merged teammate's `eval/activity-confidence-i5` into `mvp1`. Finished 2.R1: `rules.py` + hub `/api/rules` + Camera rule box + `rule` events. Live compile verified; refusals verified; hub→engine→event verified on UMN (57 pair events/40 s, 0 hand). Fixed `hold_s: 0` from the model. Not yet tried on a real person. |
