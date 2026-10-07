@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (branch `mvp2`: live-camera fixes I10).
+Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera fixes I10).
 
 ---
 
@@ -62,7 +62,8 @@ Last updated: 2026-10-07 (branch `mvp2`: live-camera fixes I10).
   callers are refused). Webcam page now sends 480 px frames, 3 in flight (it was ~2 fps through ngrok).
   Checked with a fake MJPEG camera; the page itself has not been looked at in a browser yet.
 
-- **Live-camera fixes (I10, `mvp2`):** the phone stream was sideways (the main cause of false "down"/falls,
+- **Branch `mvp3`** = `mvp2` + I10 (rotate, subject tiles, tracker memory, prompt fixes). New work goes here.
+- **Live-camera fixes (I10, `mvp2`/`mvp3`):** the phone stream was sideways (the main cause of false "down"/falls,
   ID churn and dead hand-up rules): Add camera now has a rotate option (`--rotate`). Enter/leave are no longer
   logged; the Camera page shows one tile per subject. Longer live tracker buffer; prompt no longer leaks
   "puzzle cube"; 2 vision calls in flight. Tiles also show what each person is wearing (clothing, accessories;
