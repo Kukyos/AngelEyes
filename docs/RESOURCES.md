@@ -35,6 +35,7 @@ everything.
 | CesiumJS + Cesium ion | Apache-2.0; ion and Google 3D Tiles terms | 3D globe and tiles |
 | Ultralytics YOLO11-pose | AGPL-3.0 (fine: our repo is public) | Person and pose detection |
 | ByteTrack | MIT | Tracking |
+| Ultralytics YOLOE (open-vocabulary detection) + Apple MobileCLIP text encoder | AGPL-3.0; Apple MobileCLIP licence | Objects named in watch rules (D20) |
 | MediaPipe Hands | Apache-2.0 | SOS gesture landmarks |
 | OpenCLIP | MIT | Amber appearance search |
 | OSMnx + OpenStreetMap | MIT; ODbL | SafeWalk street graph |

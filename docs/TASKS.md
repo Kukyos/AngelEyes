@@ -63,6 +63,10 @@ something only verified in theory.
 | 2.C2 | Cameras with view cones; fly-to | solo | ☑ cameras, view cones from calibration, fly-to on event |
 | 2.D1 | Hub: FastAPI + SQLite event store + WebSocket + clip serving | solo | ☑ FastAPI + SQLite + WebSocket + /media + live MJPEG relay |
 | 2.D2 | Alert card; responder phone page | solo | ☑ toast + responder page (`/responder`) |
+| 2.R1 | Watch rules: admin types a rule ("flag if a person raises their hand") → compiled to pose/object/pair checks (`angelseye/rules.py`), hub `/api/rules`, rule box on the Camera page, `rule` events (D20) | kukyos | ☐ |
+| 2.R2 | Watch rules: YOLOE open-vocab objects for person–object rules, at a reduced rate; fps cost from `angelseye.bench` | kukyos | ☐ |
+| 2.R3 | Watch rules: gated vision-model yes/no for rules geometry can't express (prefilter first, 2 consecutive yes) | kukyos | ☐ |
+| 2.R4 | Watch rules: record + label clips (raise hand, jump ×3, bend down, one person–person, one person–object) and score in `angelseye.eval` | kukyos | ☐ |
 | 2.D3 | Upload-a-video mode → events JSON + annotated video | solo | ◐ built (Clips → drop a video); not yet exercised end to end in the browser |
 
 ## Stage 3 — The gate

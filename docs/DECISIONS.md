@@ -192,6 +192,27 @@ not a fixed list.
   reasoning and returned no answer. Groq `qwen3.8-27b` was faster (1.3 s) but was not chosen.
 - **Schema:** a new event type `activity`, approved by the user, with the description in
   `evidence.series.caption`. No other field added.
+
+## D20 — Admin-written watch rules (2026-10-07)
+
+User direction: on the live camera, an admin types what to flag ("flag if a person raises
+their hand", "…jumps three times", "…bends down"), including person–person and
+person–object relations, and it is detected accurately without inventing people.
+
+- **Compile, don't guess.** Each rule is compiled once (text-only call) into a fixed set of
+  pose / pair / object checks, shown back to the admin in plain words before it goes live.
+  Thresholds the admin didn't state come from `config.yaml`.
+- **Objects:** Ultralytics YOLOE open-vocabulary detection, prompted with the objects the
+  rules name (user's choice over fixed COCO classes). Already in the installed `ultralytics`;
+  new weights + MobileCLIP text encoder (RESOURCES.md).
+- **Can't express it in geometry:** the vision model answers yes/no, only after a cheap
+  pose/object prefilter fires, and the rule fires only after 2 consecutive yes answers
+  (user's choice; keeps I2 token use down).
+- **Schema:** new event type `rule`, approved by the user; rule id, rule text, compiled spec
+  and the measured signals go in `evidence.series`. No other field added.
+- **Privacy:** rules on gender, age, identity, face or a named person are refused.
+- **Lanes:** I1 (ID switches) and I3 (ghost subjects) stay with teammates; rules run on the
+  tracker as it is until those land.
 - **Cost control:** the model runs only with `--live` / `--describe` and only while a
   person is in view, at most every 4 s (1.5 s on enter or leave). The engine records
   the provider's reported cost per run (`events.json` → `vlm`). The user's balance was
