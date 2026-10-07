@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from angelseye import ROOT, env, load_config, rules
+from angelseye.safewalk import SafeWalk
 
 RUNS = ROOT / "runs"
 WEB = ROOT / "web"
@@ -265,6 +266,64 @@ async def ws(sock: WebSocket):
 
 
 live: dict[str, tuple] = {}  # camera name -> (time, newest annotated JPEG, engine session id, people in view)
+
+# Camera counts for SafeWalk: {camera: {"count": int, "ts": float}}
+camera_counts: dict[str, dict] = {}
+
+# Camera brightness for SafeWalk: {camera: {"brightness": float, "ts": float}}
+camera_brightness: dict[str, dict] = {}
+
+
+@app.post("/api/counts/{camera}")
+async def push_count(camera: str, request: Request):
+    """Engine posts rolling people count for a camera."""
+    data = await request.json()
+    count = int(data.get("count", 0))
+    camera_counts[camera] = {"count": count, "ts": time.time()}
+    return {"ok": True}
+
+
+@app.get("/api/counts")
+def get_counts():
+    """Rolling 60s people count per camera."""
+    now = time.time()
+    return {cam: {"count": v["count"], "age_s": round(now - v["ts"], 1)}
+            for cam, v in camera_counts.items() if now - v["ts"] < 60}
+
+
+@app.post("/api/brightness/{camera}")
+async def push_brightness(camera: str, request: Request):
+    """Engine posts rolling frame brightness (0-255) for a camera."""
+    data = await request.json()
+    brightness = float(data.get("brightness", 0))
+    camera_brightness[camera] = {"brightness": brightness, "ts": time.time()}
+    return {"ok": True}
+
+
+@app.get("/api/brightness")
+def get_brightness():
+    """Rolling 60s frame brightness per camera."""
+    now = time.time()
+    return {cam: {"brightness": round(v["brightness"], 1), "age_s": round(now - v["ts"], 1)}
+            for cam, v in camera_brightness.items() if now - v["ts"] < 60}
+
+
+@app.get("/api/safewalk")
+def safewalk_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float):
+    """Return fastest and safest routes between two points."""
+    counts = {cam: v for cam, v in camera_counts.items() if time.time() - v["ts"] < 60}
+    brightness = {cam: v for cam, v in camera_brightness.items() if time.time() - v["ts"] < 60}
+    ev_list = events(camera=None, type=None)
+
+    sw = SafeWalk(counts=counts, brightness=brightness, events=ev_list)
+    fastest, safest = sw.route(origin_lat, origin_lon, dest_lat, dest_lon, prefer_safe=True)
+    heatmap = sw.heatmap()
+
+    return {
+        "fastest": fastest,
+        "safest": safest,
+        "heatmap": heatmap,
+    }
 
 
 @app.post("/api/live/{name}")

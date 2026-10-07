@@ -52,7 +52,22 @@ it overlaps the true interval within 1 s; extra detections of an already-matched
 Vision model (live activity): measured $0.000348 for one 746-token composite call
 (`runs/phone/events.json` → `vlm`), with latency 3–14 s per call in live use.
 
-`angelseye.bench` has not been re-run on the final config; run it on a busy camera (G506).
+## Benchmark (2026-10-07, `python -m angelseye.bench data/meva/G506.avi --camera G506 --max-s 60`)
+
+| Metric | Value |
+|---|---|
+| Video | G506 (bus camera), 60.1 s |
+| Frames analysed | 601 |
+| Analysed fps | 1.33 |
+| Sample fps (config) | 10 |
+| Streams at sample_fps | 0.1 |
+| Motion gate skipped | 0.0% |
+| Frames to VLM | 0.0% |
+| Model | yolo11m-pose.pt @ 1280 |
+| Device | CPU |
+| GPU | N/A |
+
+**Note:** Running on CPU only. GPU (RTX 4060) available but PyTorch CUDA not utilized in this run.
 
 ## Submission checklist, mapped to what we hand in
 

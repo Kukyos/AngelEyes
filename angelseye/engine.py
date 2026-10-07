@@ -132,6 +132,56 @@ class FramePusher:
                 time.sleep(1)
 
 
+class CountPusher:
+    """Posts rolling people count to hub's /api/counts/{camera}."""
+
+    def __init__(self, hub_url, camera_name):
+        self.url = f"{hub_url}/api/counts/{camera_name}"
+        self.count = 0
+        self.ev = threading.Event()
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def push(self, count):
+        self.count = int(count)
+        self.ev.set()
+
+    def _run(self):
+        while True:
+            self.ev.wait()
+            self.ev.clear()
+            try:
+                req = urllib.request.Request(self.url, data=json.dumps({"count": self.count}).encode(),
+                                             headers={"Content-Type": "application/json"}, method="POST")
+                urllib.request.urlopen(req, timeout=2).close()
+            except OSError:
+                time.sleep(1)
+
+
+class BrightnessPusher:
+    """Posts rolling frame brightness to hub's /api/brightness/{camera}."""
+
+    def __init__(self, hub_url, camera_name):
+        self.url = f"{hub_url}/api/brightness/{camera_name}"
+        self.brightness = 0.0
+        self.ev = threading.Event()
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def push(self, brightness):
+        self.brightness = float(brightness)
+        self.ev.set()
+
+    def _run(self):
+        while True:
+            self.ev.wait()
+            self.ev.clear()
+            try:
+                req = urllib.request.Request(self.url, data=json.dumps({"brightness": self.brightness}).encode(),
+                                             headers={"Content-Type": "application/json"}, method="POST")
+                urllib.request.urlopen(req, timeout=2).close()
+            except OSError:
+                time.sleep(1)
+
+
 def blur_heads(frame, boxes, kps, min_conf):
     """Privacy: blur every detected head. Head keypoints when visible, else the top of the box."""
     H, W = frame.shape[:2]
@@ -220,6 +270,8 @@ class Engine:
         self.activity, self.present, self.missing, self.strips = {}, set(), {}, {}
         self.subject, self.n_subjects, self.answered_t = {}, 0, -1e9  # track id -> (subject number, first seen): survives tracker ID switches
         self.pusher = FramePusher(f"{self.hub}/api/live/{self.name}?session={self.idp}") if live and self.hub else None
+        self.count_pusher = CountPusher(self.hub, self.name) if live and self.hub else None
+        self.brightness_pusher = BrightnessPusher(self.hub, self.name) if live and self.hub else None
 
     # --- helpers -------------------------------------------------------------
     def iso(self, s):
@@ -399,6 +451,11 @@ class Engine:
                 ring.append(img)
                 if self.pusher:
                     self.pusher.push(img, self.people(active, t))
+                if self.count_pusher:
+                    self.count_pusher.push(len(active))
+                if self.brightness_pusher:
+                    # Frame mean brightness (0-255) on the original frame before annotation
+                    self.brightness_pusher.push(float(frame.mean()))
                 for key in list(clips):
                     w, stop, _ = clips[key]
                     w.write(img)

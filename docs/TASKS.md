@@ -20,8 +20,8 @@ something only verified in theory.
 | 0.1 | Assign lanes A–D and the integrator; fill `HACKATHON_PLAN.md` §1 and §11 | solo | ☑ sole builder holds every lane (D13) |
 | 0.2 | Ask organisers whether code written before the clock is allowed; decide whether to start early | solo | ◐ user chose to build now; organisers' rule still unchecked |
 | 0.3 | GPU laptop? Router/hotspot? Record answers in `STATE.md` | solo | ☑ RTX 4060 laptop GPU; phone over home Wi-Fi works |
-| 0.4 | Pick the 5 km route to draw on the map | team | ☐ |
-| 0.5 | Pick the responder alert channel (ntfy.sh or Telegram) | team | ☐ |
+| 0.4 | Pick the 5 km route to draw on the map | Jerem | ☑ MEVA Muscatatuck town streets (real calibration, real 3D, GPS ground truth) |
+| 0.5 | Pick the responder alert channel (ntfy.sh or Telegram) | Jerem | ☑ ntfy.sh (topic-based, no auth, web push) |
 | 0.6 | Confirm stack and repo shape; record in `DECISIONS.md` | solo | ☑ D14, D16, D17 |
 | 0.7 | Each builder copies `docs/BUILD_RULES.md` into a local, gitignored `CLAUDE.md` | all | ☐ |
 | 0.8 | Pre-planning phase: list what the problem statement REQUIRES (must), then what is possible (could), before any build; record in `STATE.md` | | ◐ map written in `CAPABILITY_MAP.md`; promotion into scope still to decide |
@@ -73,10 +73,10 @@ something only verified in theory.
 
 | # | Task | Owner | Done |
 |---|---|---|---|
-| 3.1 | End to end on staged clips: events with who/when/evidence → hub → pins on globe | solo | ◐ MEVA + showcase clips → hub → grid, map pins, feed; Gate not formally signed off |
+| 3.1 | End to end on staged clips: events with who/when/evidence → hub → pins on globe | solo | ☑ MEVA + showcase clips → hub → grid, map pins, feed |
 | 3.2 | One live phone stream end to end | solo | ☑ phone camera live end to end, with open-ended activity (D19) |
 | 3.3 | People dots on the globe from homography | solo | ☑ people dots on the map from the homography |
-| 3.4 | First eval numbers and `angelseye.bench` numbers recorded | solo | ◐ eval numbers recorded; bench on a busy camera still to run |
+| 3.4 | First eval numbers and `angelseye.bench` numbers recorded | solo | ☑ eval recorded; bench on G506: 1.33 fps CPU, 0.1 streams @10fps |
 
 ## Improvements — open to teammates (details, evidence and fixes in `IMPROVEMENTS.md`)
 
@@ -101,12 +101,23 @@ something only verified in theory.
 | 4.1 | Amber: per-track crops, CLIP embeddings, colours, height (A) | | ☐ |
 | 4.2 | Amber: search API, case ID, audit log, path + next-camera prediction (D) | | ☐ |
 | 4.3 | Amber: path on the globe (C) | | ☐ |
-| 4.4 | SafeWalk: edge costs from counts, brightness, incidents (B) | | ☐ |
-| 4.5 | SafeWalk: fastest vs safest route + heatmap on the globe (C) | | ☐ |
+| 4.4 | SafeWalk: edge costs from counts, brightness, incidents (B) | Jerem | ☑ via 4.15-4.17 (cost fn in safewalk.py) |
+| 4.5 | SafeWalk: fastest vs safest route + heatmap on the globe (C) | Jerem | ☑ via 4.18-4.19 (SafeWalk tab, dual routes) |
 | 4.6 | Gemini confirmation and narration of candidate events (D) | solo | ◐ superseded in spirit by D19: Qwen3-VL describes activity live; event confirmation not built |
 | 4.7 | Plain-English questions over events (Groq + SQL tools) | | ☐ |
 | 4.8 | Encirclement behaviour | | ☐ |
 | 4.9 | TfL JamCams live crowd layer | | ☐ |
+| 4.10 | Route decision: use MEVA Muscatatuck town streets as 5 km demo route | Jerem | ☑ |
+| 4.11 | Responder channel: ntfy.sh; add NTFY_TOPIC to .env | Jerem | ☑ NTFY_TOPIC=angelseye-alerts in .env |
+| 4.12 | Gate sign-off: run bench on G506, write final numbers, tick TASKS 3.1 + 3.4 | Jerem | ☑ 1.33 fps CPU, 0.1 streams @10fps, device=cpu |
+| 4.13 | Download OSMnx graph for MEVA bbox -> data/street_graph.pkl | Jerem | ☑ 189 nodes, 490 edges (walk network) |
+| 4.14 | Camera->edge mapping: snap 9 MEVA cameras to nearest graph edges; add edge_id, street_name to cameras.json | Jerem | ☑ 11 cameras mapped to edges (all unnamed in OSM) |
+| 4.15 | Hub: /api/counts endpoint returning rolling 60s people count per camera | Jerem | ☑ POST /api/counts/{camera} + GET /api/counts; engine CountPusher |
+| 4.16 | Engine: push rolling frame-brightness per camera to hub (for "dark" cost) | Jerem | ☑ POST /api/brightness/{camera} + GET /api/brightness; engine BrightnessPusher |
+| 4.17 | Safewalk engine: angelseye/safewalk.py - A* with dynamic cost length x (1 + deserted + dark + incident) | Jerem | ☑ SafeWalk class with route() + heatmap(); hub /api/safewalk endpoint |
+| 4.18 | Globe: two route polylines (fastest=grey, safest=green), heatmap raster (deserted/dark), incident pins | Jerem | ☑ SafeWalk tab with origin/dest picker, dual routes, heatmap legend |
+| 4.19 | UI: route picker (origin/dest click on globe), toggle fastest/safest, legend | Jerem | ☑ Done in 4.18 (origin/dest click, mode toggle, distance legend) |
+| 4.20 | Demo polish: ensure hub-down error state, zero console errors, responsive on phone | Jerem | ☐ |
 
 ## Stage 5 — Finish
 
