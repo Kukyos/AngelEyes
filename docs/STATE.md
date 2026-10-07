@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (issues doc after the first build).
+Last updated: 2026-10-07 (I5 branch status and next independent work).
 
 ---
 
@@ -30,8 +30,16 @@ Last updated: 2026-10-07 (issues doc after the first build).
   are optimistic; the false-alarm fixes traded fall recall (it was 0.53) for precision.
 - **Team:** D13 made the user sole builder; teammates are now working too. Lanes are not
   re-assigned yet; claim rows in `TASKS.md` before touching code.
-- **Improvements open to claim:** `docs/IMPROVEMENTS.md` (I1–I5: false enter/leave, token
-  use, ghost subjects, model latency, self-reported confidence), rows in `TASKS.md`.
+- **Improvements:** I1–I4 remain unclaimed on `main`. I5 is claimed on
+  `eval/activity-confidence-i5`: a label-sheet generator, offline confidence scorer,
+  focused checks and review protocol are pushed there. The code is not on `main`.
+  I5 still needs real activity runs, human labels, and a calibration decision; no
+  confidence-based alert threshold should be set from the current evidence.
+- **While I5 waits for labels:** I2 change detection/backoff logic can be built with
+  synthetic sequences on a separate branch. Final token/cost and caption-quality
+  measurements should follow I1/I3 integration and use the same recorded input.
+- **Other branch:** `mvp1` holds I6/I7 live-camera fixes (smaller live pose input and
+  fewer non-events); they have not been merged into `main`.
 - **Next build (the user's):** admin-written watch rules on the live camera ("flag if a person
   raises their hand", "…jumps three times", person–person and person–object relations).
 
@@ -95,6 +103,7 @@ Last updated: 2026-10-07 (issues doc after the first build).
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | I5 handoff on main | Recorded the pushed `eval/activity-confidence-i5` tooling, its missing labels and calibration decision, and I2 work that can proceed independently. Docs only; no evaluator code merged. |
 | 2026-10-07 | Issues doc | Wrote `IMPROVEMENTS.md` (I1–I5) with measured evidence from the hub DB and `vlm` stats; TASKS rows for teammates. |
 | 2026-10-07 | First build | Engine, hub, eval, bench, web page (Camera / Site / Clips), responder page. MEVA site from calibration; UR Fall, UMN and CAVIAR scored; live phone camera with open-ended activity via Qwen3-VL. Decisions D13–D19. Committed and pushed. |
 | 2026-10-06 | Pre-planning | Pushed docs to GitHub. Re-read PSI07's must-do list. Wrote `CAPABILITY_MAP.md` (all behaviours by layer, Side B features, legal paths); added D10–D12 and task 0.8. No code. |

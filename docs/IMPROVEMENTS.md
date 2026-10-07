@@ -74,6 +74,11 @@ words.
 - **Fix I1 first:** fewer false enters/leaves means fewer urgent calls.
 - Log `vlm` stats per live session to the hub so cost per hour is a measured number.
 
+**What can proceed now:** change detection and backoff logic can be built and checked
+with synthetic sequences without touching the unpushed I1/I3 work. Final token,
+cost and caption-quality comparisons need the same recorded input before and after
+I1/I3 integration; false entries currently add urgent calls. I2 remains unclaimed.
+
 ## I3 — Ghost subjects
 
 **Seen:** coats on hooks and chair backs briefly tracked as people (noted in `config.yaml`).
@@ -96,6 +101,20 @@ people who changed (I2), which also shrinks the image.
 
 `activity` confidence is what the model says about itself (`confidence_is: self-reported`).
 It is not calibrated. Don't threshold alerts on it until it is checked against labelled clips.
+
+**Progress:** branch `eval/activity-confidence-i5` contains an offline label-sheet
+generator, scorer (accuracy, Brier score and confidence-range calibration), focused
+checks, and a human-review protocol in `docs/I5_CONFIDENCE_EVALUATION.md` on that
+branch. It reads existing `events.json` output; it does not change live alerts.
+
+**To finish:** collect consented activity runs using the final model/prompt, label
+every vision-model caption against the visible action (including errors and ambiguous
+cases), run the scorer, and record a decision to keep, recalibrate or remove the
+displayed confidence. No activity footage or labels are committed in this repo, so
+there is no measured calibration result yet. The scorer evaluates the *final event*
+confidence: repeated matching captions are merged by the engine using the maximum
+reported confidence. Raw per-call calibration would require saving each reply with
+its exact input image.
 
 ## Already listed in `STATE.md` → Known problems
 

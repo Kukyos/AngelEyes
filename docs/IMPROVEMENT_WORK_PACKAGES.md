@@ -4,9 +4,10 @@ This is a way to split the issues in `IMPROVEMENTS.md` for parallel work. It is 
 an assignment**: check `TASKS.md` and active branches before anyone claims a package.
 Owners and completion status belong in `TASKS.md`, not here.
 
-As of the latest pull, `main` has I1–I5 unclaimed. Branch `mvp1` separately contains
-live-camera fixes I6/I7, including a smaller live pose input that removed duplicate
-boxes in a webcam test. Recheck I1 and I3 on that build before changing the tracker:
+As of 2026-10-07, `main` has I1–I4 unclaimed; I5 is claimed and partly built on
+`eval/activity-confidence-i5` (the code is not merged into `main`). Branch `mvp1`
+separately contains live-camera fixes I6/I7, including a smaller live pose input
+that removed duplicate boxes in a webcam test. Recheck I1 and I3 on that build before changing the tracker:
 some symptoms may already be reduced. I6/I7 are not included in the packages below.
 
 ## Packages
