@@ -1,0 +1,16 @@
+{
+ "video": "data/meva/2018-03-07.11-00-06.11-05-05.school.G336.r13.avi",
+ "camera": "G336",
+ "start": "2018-03-07T11:00:06.000",
+ "fps": 10.0,
+ "duration_s": 170.0,
+ "frames_analysed": 1701,
+ "frames_gated": 0,
+ "processing_s": 59.16,
+ "analysed_fps": 28.75,
+ "model": "yolo11m-pose.pt",
+ "imgsz": 1280,
+ "device": "cuda",
+ "vlm": null,
+ "events": []
+}

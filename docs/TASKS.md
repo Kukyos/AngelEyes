@@ -94,6 +94,7 @@ something only verified in theory.
 
 | # | Task | Owner | Done |
 |---|---|---|---|
+| 4.0 | Side B setup without a GPU: `requirements-hub.txt` + MEVA site snapshot in `data/samples/site/` (README → "Screens only") | kukyos | ☑ on `mvp2`; checked from a fresh clone in a fresh venv |
 | 4.1 | Amber: per-track crops, CLIP embeddings, colours, height (A) | | ☐ |
 | 4.2 | Amber: search API, case ID, audit log, path + next-camera prediction (D) | | ☐ |
 | 4.3 | Amber: path on the globe (C) | | ☐ |

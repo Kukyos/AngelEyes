@@ -1,0 +1,16 @@
+{
+ "video": "data/meva/2018-03-07.11-00-05.11-05-05.school.G424.r13.avi",
+ "camera": "G424",
+ "start": "2018-03-07T11:00:05.000",
+ "fps": 10.0,
+ "duration_s": 225.0,
+ "frames_analysed": 2251,
+ "frames_gated": 0,
+ "processing_s": 85.04,
+ "analysed_fps": 26.47,
+ "model": "yolo11m-pose.pt",
+ "imgsz": 1280,
+ "device": "cuda",
+ "vlm": null,
+ "events": []
+}

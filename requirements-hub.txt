@@ -1,0 +1,6 @@
+# Hub + web page only: no GPU, no torch. Enough to work on the screens with data/samples/site.
+fastapi
+uvicorn[standard]
+python-multipart
+pyyaml
+numpy

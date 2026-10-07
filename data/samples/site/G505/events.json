@@ -1,0 +1,52 @@
+{
+ "video": "data/meva/2018-03-07.11-00-01.11-05-01.bus.G505.r13.avi",
+ "camera": "G505",
+ "start": "2018-03-07T11:00:01.000",
+ "fps": 10.0,
+ "duration_s": 219.0,
+ "frames_analysed": 2191,
+ "frames_gated": 0,
+ "processing_s": 85.06,
+ "analysed_fps": 25.76,
+ "model": "yolo11m-pose.pt",
+ "imgsz": 1280,
+ "device": "cuda",
+ "vlm": null,
+ "events": [
+  {
+   "id": "G505-loitering-001",
+   "type": "loitering",
+   "camera": "G505",
+   "track_ids": [
+    1
+   ],
+   "t_start": "2018-03-07T11:01:20.600",
+   "t_end": "2018-03-07T11:03:40.000",
+   "confidence": 0.95,
+   "evidence": {
+    "keyframes": [
+     "G505/keyframes/G505-loitering-001-0.jpg",
+     "G505/keyframes/G505-loitering-001-1.jpg",
+     "G505/keyframes/G505-loitering-001-2.jpg"
+    ],
+    "series": {
+     "dwell_s": 139.4,
+     "radius_m": 2.46,
+     "centre": [
+      -18.21,
+      -89.75
+     ],
+     "video_s": [
+      79.6,
+      219.0
+     ]
+    }
+   },
+   "clip_path": "G505/clips/G505-loitering-001.mp4",
+   "geo": [
+    39.0489675,
+    -85.5294799
+   ]
+  }
+ ]
+}

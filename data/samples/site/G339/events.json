@@ -1,0 +1,16 @@
+{
+ "video": "data/meva/2018-03-07.11-00-07.11-05-07.school.G339.r13.avi",
+ "camera": "G339",
+ "start": "2018-03-07T11:00:07.000",
+ "fps": 10.0,
+ "duration_s": 238.0,
+ "frames_analysed": 2381,
+ "frames_gated": 0,
+ "processing_s": 83.84,
+ "analysed_fps": 28.4,
+ "model": "yolo11m-pose.pt",
+ "imgsz": 1280,
+ "device": "cuda",
+ "vlm": null,
+ "events": []
+}

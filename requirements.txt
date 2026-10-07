@@ -2,11 +2,8 @@
 #   uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 # CPU only: plain `pip install -r requirements.txt` works (slower; lower model.imgsz in config.yaml).
 # Also needs ffmpeg on PATH (annotated video is H.264 so browsers can play it).
+-r requirements-hub.txt
 torch
 torchvision
 ultralytics
 lap
-fastapi
-uvicorn[standard]
-python-multipart
-pyyaml

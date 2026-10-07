@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (watch rules 2.R1 built; I5 eval branch merged into `mvp1`).
+Last updated: 2026-10-07 (branch `mvp2`: Side B setup without a GPU).
 
 ---
 
@@ -44,6 +44,10 @@ Last updated: 2026-10-07 (watch rules 2.R1 built; I5 eval branch merged into `mv
   (`/api/rules`); engines re-read it every 3 s and emit `rule` events. Objects (2.R2) and
   vision-model yes/no (2.R3) are refused for now, and so are gender, age, face and identity rules
   (both refusals seen live). Self-checks: `python -m angelseye.rules`.
+- **Branch `mvp2`** (from `mvp1`) is what teammates build Side B (the map layer) on. They don't
+  run the engine: `requirements-hub.txt` (no torch/CUDA) + the MEVA site snapshot in
+  `data/samples/site/` copied into `runs/`. README → "Screens only". Videos aren't in the
+  snapshot (87 MB > the 50 MB samples limit), so the grid tiles stay black; map, dots and pins work.
 - **I5 merged:** `eval/activity-confidence-i5` (teammate) is merged into `mvp1`:
   `angelseye/eval_activity.py`, `docs/I5_CONFIDENCE_EVALUATION.md`, `tests/test_eval_activity.py`.
 
@@ -97,8 +101,9 @@ Last updated: 2026-10-07 (watch rules 2.R1 built; I5 eval branch merged into `mv
 1. Read this file, then `EVALUATION.md` and `DECISIONS.md` D13–D19.
 2. Start: `python -m angelseye.hub`, then the live command in the README, and open
    http://localhost:8000.
-3. Re-render G506 (`python -m angelseye.engine data/meva/<G506 clip> --camera G506`): its stored
-   run predates the bending-vs-lying fix and still shows one false fall. Then restart the hub.
+3. G506 false fall at 191.9 s (11:03:16): re-rendered on the current config, still fires. Two people
+   standing, one half hidden behind a pillar. The bending fix doesn't cover occlusion; needs a
+   detector fix (it also ships in `data/samples/site/`).
 4. Run `python -m angelseye.bench data/meva/<G506 clip> --camera G506` (a busy camera) and
    put the result in EVALUATION.md; it hasn't been run on the final config.
 5. Record our own clips for SOS, following and loitering and add them to `ground_truth.csv`.
@@ -115,6 +120,7 @@ Last updated: 2026-10-07 (watch rules 2.R1 built; I5 eval branch merged into `mv
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | mvp2 Side B setup | Branch `mvp2`. `requirements-hub.txt`; `data/samples/site/` (9 MEVA runs: events, tracks, keyframes, 4.7 MB, CC-BY attribution); README "Screens only". G506 re-rendered: its false fall (191.9 s, person behind a pillar) still fires. Checked from a fresh clone + fresh venv with hub-only deps. |
 | 2026-10-07 | Watch rules + I5 merge | Merged teammate's `eval/activity-confidence-i5` into `mvp1`. Finished 2.R1: `rules.py` + hub `/api/rules` + Camera rule box + `rule` events. Live compile verified; refusals verified; hub→engine→event verified on UMN (57 pair events/40 s, 0 hand). Fixed `hold_s: 0` from the model. Not yet tried on a real person. |
 | 2026-10-07 | Street test data | TfL JamCam API live (890 cams). Engine runs a JamCam MP4 straight from its URL, no code: Piccadilly Circus, 131 frames, 10.8 fps, people tracked, 0 events. No new resources added. |
 | 2026-10-07 | mvp1 fixes | Branch `mvp1`. Webcam test: one person showed as 3–5 nested boxes / 18 IDs (1280 upscale); `live_imgsz: 640` → 1 box, 1 ID. Idle answers not logged, no clothing/absence captions, loitering only on calibrated cameras (I6, I7). Rules module (2.R1) paused, no code yet. |

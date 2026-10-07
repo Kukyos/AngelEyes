@@ -1,0 +1,371 @@
+{
+ "video": "data/meva/2018-03-07.11-00-01.11-05-01.bus.G506.r13.avi",
+ "camera": "G506",
+ "start": "2018-03-07T11:00:01.000",
+ "fps": 10.0,
+ "duration_s": 300.0,
+ "frames_analysed": 3001,
+ "frames_gated": 0,
+ "processing_s": 99.17,
+ "analysed_fps": 30.26,
+ "model": "yolo11m-pose.pt",
+ "imgsz": 1280,
+ "device": "cuda",
+ "vlm": null,
+ "events": [
+  {
+   "id": "G506-loitering-001",
+   "type": "loitering",
+   "camera": "G506",
+   "track_ids": [
+    30
+   ],
+   "t_start": "2018-03-07T11:00:56.500",
+   "t_end": "2018-03-07T11:03:01.700",
+   "confidence": 0.95,
+   "evidence": {
+    "keyframes": [
+     "G506/keyframes/G506-loitering-001-0.jpg",
+     "G506/keyframes/G506-loitering-001-1.jpg",
+     "G506/keyframes/G506-loitering-001-2.jpg"
+    ],
+    "series": {
+     "dwell_s": 125.2,
+     "radius_m": 2.3,
+     "centre": [
+      -17.87,
+      -80.06
+     ],
+     "video_s": [
+      55.5,
+      180.7
+     ]
+    }
+   },
+   "clip_path": "G506/clips/G506-loitering-001.mp4",
+   "geo": [
+    39.0490493,
+    -85.5294474
+   ]
+  },
+  {
+   "id": "G506-loitering-002",
+   "type": "loitering",
+   "camera": "G506",
+   "track_ids": [
+    92
+   ],
+   "t_start": "2018-03-07T11:01:58.900",
+   "t_end": "2018-03-07T11:03:01.300",
+   "confidence": 0.76,
+   "evidence": {
+    "keyframes": [
+     "G506/keyframes/G506-loitering-002-0.jpg",
+     "G506/keyframes/G506-loitering-002-1.jpg"
+    ],
+    "series": {
+     "dwell_s": 62.4,
+     "radius_m": 0.75,
+     "centre": [
+      -17.84,
+      -84.05
+     ],
+     "video_s": [
+      117.9,
+      180.3
+     ]
+    }
+   },
+   "clip_path": "G506/clips/G506-loitering-002.mp4",
+   "geo": [
+    39.0490153,
+    -85.5294577
+   ]
+  },
+  {
+   "id": "G506-fall-001",
+   "type": "fall",
+   "camera": "G506",
+   "track_ids": [
+    150
+   ],
+   "t_start": "2018-03-07T11:03:12.900",
+   "t_end": "2018-03-07T11:03:15.500",
+   "confidence": 0.86,
+   "evidence": {
+    "keyframes": [
+     "G506/keyframes/G506-fall-001-0.jpg",
+     "G506/keyframes/G506-fall-001-1.jpg"
+    ],
+    "series": {
+     "box_height_ratio": [
+      [
+       188.9,
+       1.01
+      ],
+      [
+       189.0,
+       1.0
+      ],
+      [
+       189.1,
+       0.993
+      ],
+      [
+       189.2,
+       0.996
+      ],
+      [
+       189.3,
+       0.999
+      ],
+      [
+       189.4,
+       0.997
+      ],
+      [
+       189.5,
+       0.998
+      ],
+      [
+       189.6,
+       0.995
+      ],
+      [
+       189.7,
+       0.996
+      ],
+      [
+       189.8,
+       0.994
+      ],
+      [
+       189.9,
+       1.0
+      ],
+      [
+       190.0,
+       0.992
+      ],
+      [
+       190.1,
+       0.979
+      ],
+      [
+       190.2,
+       0.972
+      ],
+      [
+       190.3,
+       0.983
+      ],
+      [
+       190.5,
+       0.59
+      ],
+      [
+       190.6,
+       0.487
+      ],
+      [
+       190.7,
+       0.462
+      ],
+      [
+       190.8,
+       0.451
+      ],
+      [
+       190.9,
+       0.445
+      ],
+      [
+       191.0,
+       0.443
+      ],
+      [
+       191.1,
+       0.442
+      ],
+      [
+       191.2,
+       0.442
+      ],
+      [
+       191.9,
+       0.486
+      ],
+      [
+       192.0,
+       0.487
+      ],
+      [
+       192.1,
+       0.486
+      ],
+      [
+       192.2,
+       0.463
+      ],
+      [
+       192.3,
+       0.463
+      ],
+      [
+       192.8,
+       0.417
+      ],
+      [
+       192.9,
+       0.421
+      ],
+      [
+       193.0,
+       0.425
+      ],
+      [
+       193.1,
+       0.423
+      ],
+      [
+       193.2,
+       0.437
+      ],
+      [
+       193.3,
+       0.428
+      ],
+      [
+       193.4,
+       0.425
+      ],
+      [
+       193.5,
+       0.424
+      ],
+      [
+       193.6,
+       0.425
+      ],
+      [
+       193.7,
+       0.442
+      ],
+      [
+       193.8,
+       0.453
+      ],
+      [
+       193.9,
+       0.459
+      ],
+      [
+       194.0,
+       0.456
+      ],
+      [
+       194.1,
+       0.452
+      ],
+      [
+       194.2,
+       0.446
+      ],
+      [
+       194.3,
+       0.445
+      ],
+      [
+       194.4,
+       0.449
+      ],
+      [
+       194.5,
+       0.448
+      ]
+     ],
+     "upright_at_s": 189.9,
+     "video_s": [
+      191.9,
+      194.5
+     ]
+    }
+   },
+   "clip_path": "G506/clips/G506-fall-001.mp4",
+   "geo": [
+    39.0490127,
+    -85.5294547
+   ]
+  },
+  {
+   "id": "G506-loitering-003",
+   "type": "loitering",
+   "camera": "G506",
+   "track_ids": [
+    171
+   ],
+   "t_start": "2018-03-07T11:03:17.000",
+   "t_end": "2018-03-07T11:05:01.000",
+   "confidence": 0.93,
+   "evidence": {
+    "keyframes": [
+     "G506/keyframes/G506-loitering-003-0.jpg",
+     "G506/keyframes/G506-loitering-003-1.jpg",
+     "G506/keyframes/G506-loitering-003-2.jpg"
+    ],
+    "series": {
+     "dwell_s": 104.0,
+     "radius_m": 1.62,
+     "centre": [
+      -17.52,
+      -79.86
+     ],
+     "video_s": [
+      196.0,
+      300.0
+     ]
+    }
+   },
+   "clip_path": "G506/clips/G506-loitering-003.mp4",
+   "geo": [
+    39.0490589,
+    -85.5294508
+   ]
+  },
+  {
+   "id": "G506-loitering-004",
+   "type": "loitering",
+   "camera": "G506",
+   "track_ids": [
+    183
+   ],
+   "t_start": "2018-03-07T11:03:28.400",
+   "t_end": "2018-03-07T11:05:01.000",
+   "confidence": 0.89,
+   "evidence": {
+    "keyframes": [
+     "G506/keyframes/G506-loitering-004-0.jpg",
+     "G506/keyframes/G506-loitering-004-1.jpg",
+     "G506/keyframes/G506-loitering-004-2.jpg"
+    ],
+    "series": {
+     "dwell_s": 92.6,
+     "radius_m": 1.63,
+     "centre": [
+      -18.11,
+      -80.34
+     ],
+     "video_s": [
+      207.4,
+      300.0
+     ]
+    }
+   },
+   "clip_path": "G506/clips/G506-loitering-004.mp4",
+   "geo": [
+    39.0490652,
+    -85.5294552
+   ]
+  }
+ ]
+}

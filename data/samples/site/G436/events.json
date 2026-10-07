@@ -1,0 +1,16 @@
+{
+ "video": "data/meva/2018-03-07.11-00-00.11-05-00.hospital.G436.r13.avi",
+ "camera": "G436",
+ "start": "2018-03-07T11:00:00.000",
+ "fps": 10.0,
+ "duration_s": 180.3,
+ "frames_analysed": 1804,
+ "frames_gated": 0,
+ "processing_s": 53.11,
+ "analysed_fps": 33.97,
+ "model": "yolo11m-pose.pt",
+ "imgsz": 1280,
+ "device": "cuda",
+ "vlm": null,
+ "events": []
+}

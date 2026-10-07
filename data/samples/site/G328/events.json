@@ -1,0 +1,16 @@
+{
+ "video": "data/meva/2018-03-07.11-00-01.11-05-01.school.G328.r13.avi",
+ "camera": "G328",
+ "start": "2018-03-07T11:00:01.000",
+ "fps": 10.0,
+ "duration_s": 288.1,
+ "frames_analysed": 2882,
+ "frames_gated": 0,
+ "processing_s": 96.34,
+ "analysed_fps": 29.91,
+ "model": "yolo11m-pose.pt",
+ "imgsz": 1280,
+ "device": "cuda",
+ "vlm": null,
+ "events": []
+}

@@ -1,0 +1,16 @@
+{
+ "video": "data/meva/2018-03-07.11-00-04.11-05-04.hospital.G341.r13.avi",
+ "camera": "G341",
+ "start": "2018-03-07T11:00:04.000",
+ "fps": 10.0,
+ "duration_s": 212.3,
+ "frames_analysed": 2124,
+ "frames_gated": 0,
+ "processing_s": 78.43,
+ "analysed_fps": 27.08,
+ "model": "yolo11m-pose.pt",
+ "imgsz": 1280,
+ "device": "cuda",
+ "vlm": null,
+ "events": []
+}

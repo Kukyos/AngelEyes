@@ -19,6 +19,25 @@ vocabulary, what each person is doing ("holding a scrambled puzzle cube", "left 
 
 Phone page for responders: http://localhost:8000/responder
 
+## Screens only (no GPU, no CUDA)
+
+For work on the map and the web page. The hub serves a recorded snapshot of the 9 MEVA site
+cameras (`data/samples/site/`: events, tracks, keyframes) instead of running the engine.
+
+```bash
+python -m venv .venv            # Python 3.12
+.venv/Scripts/python.exe -m pip install -r requirements-hub.txt
+cp .env.example .env            # CESIUM_ION_TOKEN optional; without it the map uses Esri imagery
+mkdir runs; cp -r data/samples/site/. runs/        # PowerShell: Copy-Item -Recurse data\samples\site\* runs\
+.venv/Scripts/python.exe -m angelseye.hub --port 8000
+```
+
+Open http://localhost:8000 → **Site**: map, camera cones, people dots and event pins all play
+on the page clock. Not available in this mode: the camera videos (tiles stay black; the mp4s
+are too big for the repo), upload, the live Camera feed and rule compiling (those need the
+full install below and `VISION_*` in `.env`). The page talks to the hub only through
+`/api/cameras`, `/api/events`, `/api/tracks/{camera}`, `/api/config` and `/ws`.
+
 ## Run it
 
 Windows, Python 3.12, an NVIDIA GPU (CPU works, slower), ffmpeg on PATH.
