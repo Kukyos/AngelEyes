@@ -69,10 +69,10 @@ something only verified in theory.
 
 | # | Task | Owner | Done |
 |---|---|---|---|
-| 3.1 | End to end on staged clips: events with who/when/evidence → hub → pins on globe | solo | ◐ MEVA + showcase clips → hub → grid, map pins, feed; Gate not formally signed off |
+| 3.1 | End to end on staged clips: events with who/when/evidence → hub → pins on globe | solo | ☑ MEVA + showcase clips → hub → grid, map pins, feed |
 | 3.2 | One live phone stream end to end | solo | ☑ phone camera live end to end, with open-ended activity (D19) |
 | 3.3 | People dots on the globe from homography | solo | ☑ people dots on the map from the homography |
-| 3.4 | First eval numbers and `angelseye.bench` numbers recorded | solo | ◐ eval numbers recorded; bench on a busy camera still to run |
+| 3.4 | First eval numbers and `angelseye.bench` numbers recorded | solo | ☑ eval recorded; bench on G506: 1.33 fps CPU, 0.1 streams @10fps |
 
 ## Improvements — open to teammates (details, evidence and fixes in `IMPROVEMENTS.md`)
 
@@ -99,7 +99,7 @@ something only verified in theory.
 | 4.9 | TfL JamCams live crowd layer | | ☐ |
 | 4.10 | Route decision: use MEVA Muscatatuck town streets as 5 km demo route | Jerem | ☑ |
 | 4.11 | Responder channel: ntfy.sh; add NTFY_TOPIC to .env | Jerem | ☐ |
-| 4.12 | Gate sign-off: run bench on G506, write final numbers, tick TASKS 3.1 + 3.4 | Jerem | ☐ |
+| 4.12 | Gate sign-off: run bench on G506, write final numbers, tick TASKS 3.1 + 3.4 | Jerem | ☑ 1.33 fps CPU, 0.1 streams @10fps, device=cpu |
 | 4.13 | Download OSMnx graph for MEVA bbox -> data/street_graph.pkl | Jerem | ☐ |
 | 4.14 | Camera->edge mapping: snap 9 MEVA cameras to nearest graph edges; add edge_id, street_name to cameras.json | Jerem | ☐ |
 | 4.15 | Hub: /api/counts endpoint returning rolling 60s people count per camera | Jerem | ☐ |
