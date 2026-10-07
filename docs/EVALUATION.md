@@ -22,6 +22,38 @@ anything that only shines on our curated clips is a trap.
 Ground truth format (`data/ground_truth.csv`):
 `clip, event_type, who, true_start, true_end` — written right after recording.
 
+## Results (2026-10-07, `python -m angelseye.eval`, final config)
+
+59 public clips, 12.4 min: UR Fall cam0 (30 falls, 20 everyday-activity negatives), UMN
+crowd video (11 crowd runs), CAVIAR INRIA (5 runs, 3 negatives; its overhead-camera falls
+are unscored). YOLO11m-pose @1280, ByteTrack, rules in `config.yaml`. A detection counts if
+it overlaps the true interval within 1 s; extra detections of an already-matched event
+(several people in one crowd run) are counted as duplicates, not false alarms.
+
+| Behaviour | Truth | Detected | Precision | Recall | Start error | Temporal IoU | False alarms / hour |
+|---|---|---|---|---|---|---|---|
+| Fall | 30 | 10 | 0.80 | 0.27 | 0.63 s | 0.73 | 9.7 |
+| Sudden run | 16 | 15 | 0.60 | 0.56 | 0.51 s | 0.19 | 29.1 |
+
+**Read these with care.**
+- **The thresholds were set while looking at these same clips.** The pixel-space run
+  speeds came from UMN scene 1; the fall timing, hip drop and track-repair joins came
+  from UR Fall. There is no held-out split, so the numbers are optimistic.
+- **The false-alarm fixes cost fall recall.** Before them (lying shape required,
+  bending told apart by hip height, cut-off boxes ignored) the same set scored fall P 0.67 / R 0.53
+  with 38.8 false alarms per hour. We kept the fixes because they removed real
+  false alarms on MEVA CCTV and on the live phone, but the trade-off is real.
+- **Most missed falls are in UR Fall clips 15–30,** which end 1–2 s after the person lands,
+  often with the person half out of frame.
+- **CAVIAR's runners are overhead and are not seen by the pose model,** so 5 of the 16
+  run truths are close to unreachable for this setup.
+- **Following, loitering and SOS have no scored ground truth yet**, only self-checks.
+
+Vision model (live activity): measured $0.000348 for one 746-token composite call
+(`runs/phone/events.json` → `vlm`), with latency 3–14 s per call in live use.
+
+`angelseye.bench` has not been re-run on the final config; run it on a busy camera (G506).
+
 ## Submission checklist, mapped to what we hand in
 
 | Required (booklet) | What we provide |

@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Site</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.146.0/Build/Cesium/Widgets/widgets.css">
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.146.0/Build/Cesium/Cesium.js"></script>
+<style>
+:root {
+  --bg: #000; --line: #1c1c1c; --text: #f2f2f2; --dim: #8a8a8a; --faint: #4a4a4a; --hover: #0e0e0e;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", ui-monospace, Consolas, monospace;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 var(--sans); overflow: hidden;
+  -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: var(--dim); background: none; border: 0; cursor: pointer; padding: 6px 2px;
+  transition: color .15s var(--ease); }
+button:hover, button.on { color: var(--text); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+header { height: 44px; display: flex; align-items: center; gap: 22px; padding: 0 18px; border-bottom: 1px solid var(--line); }
+header .sp { flex: 1; }
+#clock { font: 15px var(--mono); letter-spacing: .04em; }
+#play { width: 22px; height: 22px; padding: 0; display: grid; place-items: center; }
+#play svg { width: 12px; height: 12px; fill: currentColor; }
+#dot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); transition: background .3s; }
+#dot.ok { background: var(--text); }
+
+#site { position: absolute; inset: 44px 0 48px 0; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr); }
+#grid { display: grid; gap: 2px; padding: 2px; align-content: center; min-height: 0; }
+.tile { position: relative; aspect-ratio: 16/9; background: #050505; overflow: hidden; cursor: zoom-in;
+  outline: 1px solid transparent; outline-offset: -1px; transition: outline-color .25s var(--ease); }
+.tile:hover { outline-color: var(--faint); }
+.tile video { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .4s var(--ease); }
+.tile .cap { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between;
+  padding: 14px 8px 5px; font: 11px var(--mono); color: var(--dim); background: linear-gradient(#0000, #000b); pointer-events: none; }
+.tile .cap b { color: var(--text); font-weight: 500; }
+.tile.off video { opacity: .12; }
+.tile.alert { outline: 2px solid var(--text); outline-offset: -2px; animation: breathe 1.4s var(--ease) infinite alternate; }
+@keyframes breathe { to { outline-color: #ffffff40; } }
+
+aside { display: grid; grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); border-left: 1px solid var(--line); min-height: 0; }
+#globe { position: relative; min-height: 0; background: #000; }
+#globe .cesium-viewer-bottom, #globe .cesium-widget-credits { display: none !important; }
+#globeNote { position: absolute; left: 10px; bottom: 8px; z-index: 2; font: 10px var(--mono); color: var(--faint); pointer-events: none; }
+#home { position: absolute; right: 10px; top: 8px; z-index: 2; font-size: 11px; }
+.head { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 16px 8px;
+  font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+#feed { display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line); }
+.list { overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: #222 transparent; }
+.ev { display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center; padding: 8px 16px;
+  cursor: pointer; transition: background .15s var(--ease); }
+.ev:hover { background: var(--hover); }
+.ev img { width: 72px; height: 40px; object-fit: cover; background: #111; filter: grayscale(1); }
+.ev .t { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.ev.watch .t { color: var(--dim); font-weight: 500; }
+.ev .m { font: 11px var(--mono); color: var(--dim); }
+.ev .c { font: 11px var(--mono); color: var(--faint); }
+.ev.new { animation: enter .5s var(--ease); }
+@keyframes enter { from { opacity: 0; transform: translateY(-6px); background: #1a1a1a; } }
+.empty { padding: 8px 16px; color: var(--faint); font-size: 12px; }
+
+footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-top: 1px solid var(--line);
+  display: flex; align-items: center; padding: 0 18px; }
+#track { position: relative; flex: 1; height: 28px; }
+#track input { position: absolute; inset: 0; width: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 2; }
+#track .rail { position: absolute; left: 0; right: 0; top: 14px; height: 1px; background: var(--line); }
+#track .done { position: absolute; left: 0; top: 14px; height: 1px; background: var(--dim); }
+#track .tick { position: absolute; top: 8px; width: 1px; height: 13px; background: var(--faint); }
+#track .tick.alert { background: var(--text); height: 17px; top: 6px; width: 2px; }
+#track .knob { position: absolute; top: 10px; width: 9px; height: 9px; margin-left: -4px; border-radius: 50%; background: var(--text); }
+
+#focus { position: absolute; inset: 44px 0 48px 0; z-index: 10; display: grid; grid-template-columns: minmax(0, 1fr) 360px;
+  background: #000; opacity: 0; pointer-events: none; transform: scale(.985); transition: opacity .22s var(--ease), transform .22s var(--ease); }
+#focus.show { opacity: 1; pointer-events: auto; transform: none; }
+#focus video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+#focus .side { border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+
+#toast { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; flex-direction: column;
+  gap: 6px; pointer-events: none; }
+#toast div { background: var(--text); color: #000; padding: 7px 14px; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; animation: drop .3s var(--ease); transition: opacity .4s; }
+@keyframes drop { from { opacity: 0; transform: translateY(-8px); } }
+
+#clips { position: absolute; inset: 44px 0 0 0; display: none; grid-template-columns: 280px minmax(0, 1fr) 360px; }
+#clips.show { display: grid; }
+#clips .col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
+#clips .col:last-child { border-right: 0; border-left: 1px solid var(--line); }
+.run { padding: 10px 16px; cursor: pointer; transition: background .15s var(--ease); border-left: 2px solid transparent; }
+.run:hover { background: var(--hover); }
+.run.sel { border-left-color: var(--text); background: var(--hover); }
+.run .m { font: 11px var(--mono); color: var(--dim); }
+#drop { margin: 4px 16px 12px; padding: 16px; border: 1px dashed var(--faint); text-align: center; color: var(--dim);
+  font-size: 12px; cursor: pointer; transition: border-color .15s, color .15s; }
+#drop:hover, #drop.over { border-color: var(--text); color: var(--text); }
+#player { display: grid; place-items: center; min-height: 0; background: #000; color: var(--faint); }
+#player video { max-width: 100%; max-height: 100%; }
+#cam { position: absolute; inset: 44px 0 0 0; display: none; grid-template-columns: minmax(0, 1fr) 380px; }
+#cam.show { display: grid; }
+#camView { display: grid; place-items: center; background: #000; min-height: 0; color: var(--faint); }
+#camView img { max-width: 100%; max-height: 100%; display: block; }
+#camSide { border-left: 1px solid var(--line); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.now { padding: 4px 16px 16px; border-bottom: 1px solid var(--line); }
+.who { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: baseline; padding: 10px 0; animation: enter .4s var(--ease); }
+.who .p { font: 12px var(--mono); color: var(--dim); }
+.who .d { font-size: 20px; line-height: 1.25; font-weight: 500; }
+.who .s { grid-column: 2; font: 11px var(--mono); color: var(--faint); }
+.log { display: grid; grid-template-columns: 64px 36px 1fr; gap: 8px; padding: 6px 16px; font-size: 13px; animation: enter .4s var(--ease); }
+.log .tm, .log .p { font: 11px var(--mono); color: var(--faint); padding-top: 2px; }
+.log.alert { font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+#down { position: absolute; inset: 0; display: none; place-items: center; z-index: 30; background: #000; color: var(--dim);
+  text-align: center; font: 13px var(--mono); line-height: 2; }
+</style>
+</head>
+<body>
+<header>
+  <button id="tabCam" class="on">Camera</button>
+  <button id="tabSite">Site</button>
+  <button id="tabClips">Clips</button>
+  <span class="sp"></span>
+  <span id="clock" class="num">--:--:--</span>
+  <button id="play" title="Play / pause (space)"><svg viewBox="0 0 12 12"><path id="playIcon" d="M2 1h3v10H2zM7 1h3v10H7z"/></svg></button>
+  <button id="spd" class="num">1×</button>
+  <span id="dot" title="Live connection"></span>
+</header>
+
+<main id="site">
+  <section id="grid"></section>
+  <aside>
+    <div id="globe"><button id="home">Recenter</button><div id="globeNote"></div></div>
+    <div id="feed"><div class="head"><span>Events</span><span id="evCount" class="num"></span></div><div class="list" id="feedlist"></div></div>
+  </aside>
+</main>
+
+<footer><div id="track"><div class="rail"></div><div class="done" id="done"></div><div class="knob" id="knob"></div>
+  <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Timeline"></div></footer>
+
+<div id="focus">
+  <video id="fvid" muted playsinline></video>
+  <div class="side"><div class="head"><span id="ftitle"></span><button id="fclose">Close</button></div><div class="list" id="flist"></div></div>
+</div>
+
+<main id="cam">
+  <div id="camView">Waiting for a camera. Start one with: python -m angelseye.engine http://PHONE_IP:8080/video --live --name phone --hub http://127.0.0.1:8000</div>
+  <div id="camSide">
+    <div class="now"><div class="head" style="padding-left:0;padding-right:0"><span>Now</span><span id="camName" class="num"></span></div><div id="nowList"><div class="empty" style="padding-left:0">Nobody in view</div></div></div>
+    <div style="display:flex;flex-direction:column;min-height:0"><div class="head"><span>Log</span></div><div class="list" id="camLog"></div></div>
+  </div>
+</main>
+
+<main id="clips">
+  <div class="col"><div class="head"><span>Clips</span></div>
+    <label id="drop">Drop a video to analyse<input id="file" type="file" accept="video/*" hidden></label>
+    <div class="list" id="runlist"></div></div>
+  <div id="player">Select a clip</div>
+  <div class="col"><div class="head"><span>Events</span></div><div class="list" id="clipEvents"></div></div>
+</main>
+
+<div id="toast"></div>
+<div id="down">Hub unreachable<br>python -m angelseye.hub</div>
+
+<script>
+const NAMES = { fall: "Fall", sudden_run: "Sudden run", sos: "SOS", following: "Following", loitering: "Loitering", activity: "Activity" };
+const isAlert = (e) => e.type !== "loitering" && e.type !== "activity";
+const $ = (s) => document.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const hms = (d) => d.toTimeString().slice(0, 8);
+async function j(url, opt) { const r = await fetch(url, opt); if (!r.ok) throw new Error(`${url}: ${r.status}`); return r.json(); }
+
+let tiles = {}, events = [], siteStart = 0, siteEnd = 1, T = 0, playing = true, speed = 1;
+let shown = new Set(), focusCam = null, viewer = null, dotEnts = {}, pinEnts = {}, coneEnts = {}, trackData = {}, audio = null;
+const W = () => Cesium.Color.WHITE;
+
+// ---------------- boot ----------------
+async function boot() {
+  let reg, evs, cfg;
+  try { [reg, evs, cfg] = await Promise.all([j("/api/cameras"), j("/api/events"), j("/api/config")]); }
+  catch { $("#down").style.display = "grid"; return; }
+  const live = reg.cameras.filter((c) => c.run);
+  if (live.length) {
+    siteStart = Math.min(...live.map((c) => +new Date(c.run.start)));
+    siteEnd = Math.max(...live.map((c) => (+new Date(c.run.start) - siteStart) / 1000 + c.run.duration_s));
+  }
+  const siteIds = new Set(live.map((c) => c.id));
+  events = evs.filter((e) => siteIds.has(e.camera)).map(withTimes);
+  buildGrid(live);
+  buildTimeline();
+  initGlobe(reg, cfg.cesium_token).catch((e) => ($("#globeNote").textContent = "map unavailable: " + e.message));
+  for (const c of live) j(`/api/tracks/${c.id}`).then((d) => (trackData[c.id] = d)).catch(() => {});
+  connectWS(siteIds);
+  initClips(siteIds, evs);
+  requestAnimationFrame(tick);
+}
+const withTimes = (e) => ({ ...e, s: (+new Date(e.t_start) - siteStart) / 1000, e: (+new Date(e.t_end) - siteStart) / 1000 });
+
+// ---------------- grid ----------------
+function buildGrid(live) {
+  const g = $("#grid");
+  g.style.gridTemplateColumns = `repeat(${Math.ceil(Math.sqrt(live.length || 1))}, minmax(0, 1fr))`;
+  for (const c of live) {
+    const t = el("div", "tile", `<video muted playsinline preload="auto" src="${c.run.video_url}"></video>
+      <div class="cap"><b>${esc(c.id)}</b><span class="pc num"></span></div>`);
+    t.onclick = () => openFocus(c.id);
+    g.append(t);
+    tiles[c.id] = { el: t, v: t.querySelector("video"), pc: t.querySelector(".pc"), cam: c,
+      off: (+new Date(c.run.start) - siteStart) / 1000, dur: c.run.duration_s };
+  }
+}
+
+function syncVideo(v, local, dur) {
+  if (local < 0 || local >= dur) { if (!v.paused) v.pause(); return false; }
+  if (v.readyState >= 1 && Math.abs(v.currentTime - local) > 0.6) v.currentTime = local;
+  if (v.playbackRate !== speed) v.playbackRate = speed;
+  if (playing && v.paused) v.play().catch(() => {});
+  if (!playing && !v.paused) v.pause();
+  return true;
+}
+
+// ---------------- clock ----------------
+let last = performance.now(), lastSlow = 0;
+function tick(now) {
+  const dt = Math.min((now - last) / 1000, 0.5); last = now;
+  if (playing) { T += dt * speed; if (T >= siteEnd) T = 0; }
+  for (const id in tiles) {
+    const tl = tiles[id];
+    tl.el.classList.toggle("off", !syncVideo(tl.v, T - tl.off, tl.dur));
+    tl.el.classList.toggle("alert", events.some((e) => e.camera === id && isAlert(e) && T >= e.s && T <= e.e + 3));
+  }
+  if (focusCam) syncVideo($("#fvid"), T - tiles[focusCam].off, tiles[focusCam].dur);
+  $("#clock").textContent = siteStart ? hms(new Date(siteStart + T * 1000)) : "--:--:--";
+  const p = (T / siteEnd * 100) + "%";
+  $("#knob").style.left = p; $("#done").style.width = p;
+  if (now - lastSlow > 200) { lastSlow = now; reveal(); updateDots(); }
+  requestAnimationFrame(tick);
+}
+
+function seek(t) { T = Math.max(0, Math.min(t, siteEnd)); for (const id in tiles) tiles[id].v.currentTime = Math.max(0, T - tiles[id].off); reveal(true); }
+function setPlaying(p) { playing = p; $("#playIcon").setAttribute("d", p ? "M2 1h3v10H2zM7 1h3v10H7z" : "M2 1l9 5-9 5z"); }
+$("#play").onclick = () => setPlaying(!playing);
+$("#spd").onclick = () => { speed = speed >= 8 ? 1 : speed * 2; $("#spd").textContent = speed + "×"; };
+$("#scrub").oninput = (e) => seek(e.target.value / 1000 * siteEnd);
+
+function buildTimeline() {
+  $("#track").querySelectorAll(".tick").forEach((x) => x.remove());
+  for (const e of events) {
+    const k = el("div", "tick" + (isAlert(e) ? " alert" : ""));
+    k.style.left = (e.s / siteEnd * 100) + "%";
+    $("#track").append(k);
+  }
+}
+
+// ---------------- events ----------------
+function evRow(e, onclick) {
+  const kf = e.evidence.keyframes[0];
+  const d = el("div", "ev" + (isAlert(e) ? "" : " watch"),
+    `<img src="${kf ? "/media/" + esc(kf) : ""}" alt="">
+     <div><div class="t">${NAMES[e.type]}</div><div class="m">${esc(e.camera)} · P${e.track_ids.join(" → P")} · ${esc(e.t_start.slice(11, 19))}</div></div>
+     <div class="c">${Math.round(e.confidence * 100)}%</div>`);
+  d.onclick = onclick;
+  return d;
+}
+
+function reveal(quiet) {
+  const vis = events.filter((e) => e.s <= T).sort((a, b) => b.s - a.s);
+  const key = vis.map((e) => e.id).join();
+  if (key === reveal.key) return;
+  reveal.key = key;
+  const list = $("#feedlist");
+  list.replaceChildren();
+  if (!vis.length) list.append(el("div", "empty", "Nothing yet"));
+  for (const e of vis) {
+    const row = evRow(e, () => jumpTo(e));
+    if (!shown.has(e.id)) { shown.add(e.id); if (!quiet && playing && T - e.s < 2) { row.classList.add("new"); alarm(e); } }
+    list.append(row);
+  }
+  for (const id of shown) if (!vis.some((e) => e.id === id)) shown.delete(id);
+  $("#evCount").textContent = `${vis.length}/${events.length}`;
+  for (const e of events) if (pinEnts[e.id]) pinEnts[e.id].show = e.s <= T;
+}
+
+function alarm(e) {
+  if (!isAlert(e)) return;
+  const t = el("div", "", `${NAMES[e.type]} · ${esc(e.camera)} · P${e.track_ids.join(" → P")}`);
+  $("#toast").append(t);
+  setTimeout(() => { t.style.opacity = 0; setTimeout(() => t.remove(), 400); }, 3500);
+  if (audio) { const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = 880; g.gain.value = .05;
+    o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime + .15); }
+}
+document.addEventListener("pointerdown", () => { audio = audio || new AudioContext(); }, { once: true });
+
+function jumpTo(e) {
+  seek(e.s - 3);
+  openFocus(e.camera);
+  if (viewer && e.geo) viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(e.geo[1], e.geo[0] - 0.0012, 260),
+    orientation: { pitch: Cesium.Math.toRadians(-55) }, duration: 1.1 });
+}
+
+function openFocus(cam) {
+  const tl = tiles[cam];
+  if (!tl) return;
+  focusCam = cam;
+  const v = $("#fvid");
+  if (!v.src.endsWith(tl.cam.run.video_url)) v.src = tl.cam.run.video_url;
+  v.currentTime = Math.max(0, T - tl.off);
+  $("#ftitle").textContent = tl.cam.id;
+  const list = $("#flist");
+  list.replaceChildren();
+  const evs = events.filter((e) => e.camera === cam);
+  if (!evs.length) list.append(el("div", "empty", "No events on this camera"));
+  for (const e of evs) list.append(evRow(e, () => seek(e.s - 3)));
+  $("#focus").classList.add("show");
+}
+function closeFocus() { focusCam = null; $("#focus").classList.remove("show"); $("#fvid").pause(); }
+$("#fclose").onclick = closeFocus;
+document.addEventListener("keydown", (k) => {
+  if (k.key === "Escape") closeFocus();
+  if (k.key === " " && k.target === document.body) { k.preventDefault(); setPlaying(!playing); }
+});
+
+// ---------------- live push ----------------
+function connectWS(siteIds) {
+  const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
+  ws.onopen = () => $("#dot").classList.add("ok");
+  ws.onclose = () => { $("#dot").classList.remove("ok"); setTimeout(() => connectWS(siteIds), 2000); };
+  ws.onmessage = (m) => {
+    const e = JSON.parse(m.data);
+    if (onCamEvent(e)) return;
+    if (siteIds.has(e.camera)) {
+      const ev = withTimes(e);
+      events = events.filter((x) => x.id !== e.id).concat([ev]);
+      buildTimeline(); reveal.key = null; addPin(ev);
+    } else onClipEvent(e);
+  };
+}
+
+// ---------------- map ----------------
+async function initGlobe(reg, token) {
+  const opts = { animation: false, timeline: false, baseLayerPicker: false, geocoder: false, homeButton: false,
+    sceneModePicker: false, navigationHelpButton: false, infoBox: false, selectionIndicator: false, fullscreenButton: false,
+    skyBox: false, skyAtmosphere: false, contextOptions: { webgl: { alpha: false } } };
+  // An ion token can be restricted to certain page addresses; check before relying on it.
+  const ionOk = token && await fetch(`https://api.cesium.com/v1/assets/1/endpoint?access_token=${token}`).then((r) => r.ok).catch(() => false);
+  if (ionOk) { Cesium.Ion.defaultAccessToken = token; opts.terrain = Cesium.Terrain.fromWorldTerrain(); }
+  else opts.baseLayer = new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({
+    url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", maximumLevel: 19 }));
+  viewer = new Cesium.Viewer("globe", opts);
+  const sc = viewer.scene;
+  sc.backgroundColor = Cesium.Color.BLACK;
+  for (const k of ["sun", "moon", "skyBox", "skyAtmosphere"]) if (sc[k]) sc[k].show = false;
+  sc.fog.enabled = false;
+  sc.globe.baseColor = Cesium.Color.BLACK; sc.globe.showGroundAtmosphere = false; sc.globe.enableLighting = false;
+  const base = viewer.imageryLayers.get(0);
+  if (base) { base.saturation = 0; base.brightness = 0.75; base.contrast = 1.15; }
+  $("#globeNote").textContent = "Imagery © Esri, Maxar" + (ionOk ? " · terrain Cesium ion" : "");
+
+  for (const c of reg.cameras) {
+    const has = !!c.run;
+    coneEnts[c.id] = viewer.entities.add({
+      polygon: { hierarchy: Cesium.Cartesian3.fromDegreesArray(c.footprint.flatMap(([la, lo]) => [lo, la])),
+        material: W().withAlpha(has ? 0.12 : 0.04) } });
+    if (has) viewer.entities.add({ polyline: { width: 1, clampToGround: true, material: W().withAlpha(0.45),
+      positions: Cesium.Cartesian3.fromDegreesArray([...c.footprint, c.footprint[0]].flatMap(([la, lo]) => [lo, la])) } });
+    viewer.entities.add({ position: Cesium.Cartesian3.fromDegrees(c.lon, c.lat), properties: { kind: "cam", id: c.id },
+      point: { pixelSize: has ? 7 : 4, color: has ? W() : W().withAlpha(.4), outlineColor: Cesium.Color.BLACK, outlineWidth: 1,
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity },
+      label: { show: has, text: c.id, font: "10px monospace", pixelOffset: new Cesium.Cartesian2(0, -13), fillColor: W(),
+        showBackground: true, backgroundColor: Cesium.Color.BLACK.withAlpha(.55), backgroundPadding: new Cesium.Cartesian2(4, 2),
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity } });
+  }
+  for (const e of events) addPin(e);
+  const lat = reg.cameras.reduce((a, c) => a + c.lat, 0) / reg.cameras.length;
+  const lon = reg.cameras.reduce((a, c) => a + c.lon, 0) / reg.cameras.length;
+  const home = (d = 1.4) => viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat - 0.0028, ionOk ? 560 : 360),
+    orientation: { pitch: Cesium.Math.toRadians(-52) }, duration: d });
+  home(0);
+  $("#home").onclick = () => home();
+  new Cesium.ScreenSpaceEventHandler(sc.canvas).setInputAction((m) => {
+    const p = sc.pick(m.position), props = p && p.id && p.id.properties;
+    if (!props) return;
+    if (props.kind.getValue() === "cam") openFocus(props.id.getValue());
+    else { const e = events.find((x) => x.id === props.id.getValue()); if (e) jumpTo(e); }
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+}
+
+function addPin(e) {
+  if (!viewer || !e.geo) return;
+  if (pinEnts[e.id]) viewer.entities.remove(pinEnts[e.id]);
+  const a = isAlert(e);
+  pinEnts[e.id] = viewer.entities.add({ position: Cesium.Cartesian3.fromDegrees(e.geo[1], e.geo[0]), show: e.s <= T,
+    properties: { kind: "event", id: e.id },
+    point: { pixelSize: a ? 14 : 10, color: Cesium.Color.TRANSPARENT, outlineColor: a ? W() : W().withAlpha(.5), outlineWidth: a ? 2 : 1,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity } });
+}
+
+function updateDots() {
+  if (!viewer) return;
+  const seen = new Set();
+  for (const id in tiles) {
+    const d = trackData[id], tl = tiles[id];
+    const fr = d ? d.frames[Math.round((T - tl.off) * d.hz)] || [] : [];
+    tl.pc.textContent = d && fr.length ? `${fr.length} ${fr.length === 1 ? "person" : "people"}` : "";
+    for (const [pid, la, lo, label, flagged] of fr) {
+      const key = id + ":" + pid;
+      seen.add(key);
+      let ent = dotEnts[key];
+      if (!ent) ent = dotEnts[key] = viewer.entities.add({ point: { pixelSize: 6, color: W(), outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 1, heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity } });
+      ent.position = Cesium.Cartesian3.fromDegrees(lo, la);
+      ent.point.pixelSize = flagged ? 9 : 6;
+      ent.show = true;
+    }
+    if (coneEnts[id]) coneEnts[id].polygon.material = W().withAlpha(tl.el.classList.contains("alert") ? .4 : .14);
+  }
+  for (const k in dotEnts) if (!seen.has(k)) dotEnts[k].show = false;
+}
+
+// ---------------- clips & upload ----------------
+let clipRuns = [], clipEvents = [], selRun = null, siteSet = new Set();
+async function initClips(siteIds, evs) {
+  siteSet = siteIds;
+  clipEvents = evs.filter((e) => !siteIds.has(e.camera));
+  clipRuns = (await j("/api/runs").catch(() => [])).filter((r) => !siteIds.has(r.name));
+  renderRuns();
+}
+function renderRuns() {
+  const list = $("#runlist");
+  list.replaceChildren();
+  if (!clipRuns.length) list.append(el("div", "empty", "No clips yet"));
+  for (const r of clipRuns) {
+    const n = clipEvents.filter((e) => e.camera === r.name && isAlert(e)).length;
+    const d = el("div", "run" + (selRun === r.name ? " sel" : ""),
+      `<div>${esc(r.name)}</div><div class="m">${Math.round(r.duration_s)} s · ${n} alert${n === 1 ? "" : "s"}</div>`);
+    d.onclick = () => selectRun(r.name);
+    list.append(d);
+  }
+}
+function selectRun(name) {
+  selRun = name;
+  const r = clipRuns.find((x) => x.name === name);
+  $("#player").innerHTML = `<video controls autoplay muted playsinline src="${r.video_url}"></video>`;
+  renderRuns(); renderClipEvents();
+}
+function renderClipEvents() {
+  const list = $("#clipEvents");
+  list.replaceChildren();
+  const evs = clipEvents.filter((e) => e.camera === selRun).sort((a, b) => (a.t_start < b.t_start ? -1 : 1));
+  if (!evs.length) list.append(el("div", "empty", selRun ? "No events in this clip" : ""));
+  for (const e of evs) list.append(evRow(e, () => { const v = $("#player video"); if (v) { v.currentTime = Math.max(0, e.evidence.series.video_s[0] - 2); v.play(); } }));
+}
+function onClipEvent(e) {
+  clipEvents = clipEvents.filter((x) => x.id !== e.id).concat([e]);
+  alarm(e);
+  renderRuns(); if (selRun === e.camera) renderClipEvents();
+}
+async function upload(file) {
+  const fd = new FormData(); fd.append("file", file);
+  const d = $("#drop");
+  d.textContent = `Uploading ${file.name}`;
+  try {
+    const { job, run } = await j("/api/upload", { method: "POST", body: fd });
+    d.textContent = `Analysing ${file.name}`;
+    const poll = setInterval(async () => {
+      const s = await j(`/api/jobs/${job}`).catch(() => ({ status: "failed", log: "hub unreachable" }));
+      if (s.status === "running") return;
+      clearInterval(poll);
+      if (s.status === "done") {
+        d.textContent = "Drop a video to analyse";
+        clipRuns = (await j("/api/runs")).filter((r) => !siteSet.has(r.name));
+        selectRun(run);
+      } else d.textContent = "Analysis failed: " + (s.log || "").slice(-160);
+    }, 1500);
+  } catch (err) { d.textContent = "Upload failed: " + err.message; }
+}
+$("#file").onchange = (e) => e.target.files[0] && upload(e.target.files[0]);
+$("#drop").ondragover = (e) => { e.preventDefault(); $("#drop").classList.add("over"); };
+$("#drop").ondragleave = () => $("#drop").classList.remove("over");
+$("#drop").ondrop = (e) => { e.preventDefault(); $("#drop").classList.remove("over"); if (e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]); };
+
+function tab(which) {
+  const site = which === "site";
+  for (const [b, w] of [["#tabCam", "cam"], ["#tabSite", "site"], ["#tabClips", "clips"]]) $(b).classList.toggle("on", which === w);
+  $("#site").style.display = site ? "grid" : "none"; document.querySelector("footer").style.display = site ? "flex" : "none";
+  $("#clips").classList.toggle("show", which === "clips");
+  $("#cam").classList.toggle("show", which === "cam");
+  for (const x of ["#clock", "#play", "#spd"]) $(x).style.visibility = site ? "visible" : "hidden";
+  if (!site) { setPlaying(false); closeFocus(); } else setPlaying(true);
+}
+$("#tabCam").onclick = () => tab("cam");
+$("#tabSite").onclick = () => tab("site");
+$("#tabClips").onclick = () => tab("clips");
+
+// ---------------- live camera ----------------
+// The log only ever grows at the top; rows are created once and updated in place.
+let camName = null, camSession = null, camEvents = {}, camRows = {}, camMiss = 0;
+const inSession = (e) => camSession && e.id.startsWith(camSession + "-");
+const camT = (iso) => iso.slice(11, 19);
+async function pollCam() {
+  const list = await j("/api/live").catch(() => null);
+  if (list === null) return;                       // hub hiccup: keep what is on screen
+  const cam = list[0];
+  if (!cam) { if (camName && ++camMiss > 3) { camName = null; $("#camView").textContent = "Camera disconnected"; } return; }
+  camMiss = 0;
+  if (cam.name === camName && cam.session === camSession) return;   // same session: nothing to do
+  camName = cam.name; camSession = cam.session; camEvents = {}; camRows = {};
+  $("#camName").textContent = cam.name;
+  $("#camLog").replaceChildren();
+  $("#camView").innerHTML = `<img src="/api/live/${encodeURIComponent(cam.name)}/stream" alt="">`;
+  const evs = (await j(`/api/events?camera=${encodeURIComponent(cam.name)}`).catch(() => []))
+    .filter(inSession).sort((a, b) => (a.t_start < b.t_start ? -1 : 1));
+  for (const e of evs) camUpsert(e, false);
+  renderNow();
+}
+function camText(e) { return e.type === "activity" ? e.evidence.series.caption : NAMES[e.type]; }
+function camUpsert(e, animate) {
+  camEvents[e.id] = e;
+  let row = camRows[e.id];
+  if (!row) {
+    row = camRows[e.id] = el("div", "log" + (e.type !== "activity" ? " alert" : ""));
+    if (!animate) row.style.animation = "none";
+    $("#camLog").prepend(row);
+  }
+  row.innerHTML = `<span class="tm">${camT(e.t_start)}</span><span class="p">P${e.track_ids.join(",")}</span><span>${esc(camText(e))}</span>`;
+}
+function onCamEvent(e) {
+  if (e.camera !== camName) return false;
+  if (!inSession(e)) return true;  // an older session of this camera: not shown
+  const fresh = !camEvents[e.id];
+  camUpsert(e, fresh);
+  renderNow();
+  if (fresh && isAlert(e)) alarm(e);
+  return true;
+}
+function renderNow() {
+  // newest activity per person; people whose latest entry is "left the frame" are gone
+  const latest = {};
+  for (const e of Object.values(camEvents)) {
+    if (e.type !== "activity") continue;
+    const who = e.track_ids[e.track_ids.length - 1];
+    if (!latest[who] || latest[who].t_start < e.t_start) latest[who] = e;
+  }
+  const people = Object.entries(latest).filter(([, e]) => e.evidence.series.caption !== "left the frame");
+  const box = $("#nowList");
+  const want = new Set(people.map(([p]) => "now-" + p));
+  for (const child of [...box.children]) if (!want.has(child.id)) child.remove();
+  if (!people.length) { box.replaceChildren(el("div", "empty", "Nobody in view")); box.firstChild.style.paddingLeft = 0; return; }
+  for (const [p, e] of people) {
+    let row = document.getElementById("now-" + p);
+    if (!row) { row = el("div", "who"); row.id = "now-" + p; box.append(row); }
+    const html = `<span class="p">P${p}</span><span class="d">${esc(e.evidence.series.caption)}</span><span class="s">since ${camT(e.t_start)}</span>`;
+    if (row.innerHTML !== html) row.innerHTML = html;
+  }
+}
+setInterval(pollCam, 2000);
+pollCam();
+tab("cam");
+
+boot();
+</script>
+</body>
+</html>

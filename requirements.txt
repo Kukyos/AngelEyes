@@ -1,0 +1,12 @@
+# Python 3.12. GPU (NVIDIA): install torch first from the CUDA index, e.g.
+#   uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+# CPU only: plain `pip install -r requirements.txt` works (slower; lower model.imgsz in config.yaml).
+# Also needs ffmpeg on PATH (annotated video is H.264 so browsers can play it).
+torch
+torchvision
+ultralytics
+lap
+fastapi
+uvicorn[standard]
+python-multipart
+pyyaml

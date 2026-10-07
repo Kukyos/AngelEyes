@@ -19,6 +19,14 @@ data/meva/
 # Model weights
 *.pt
 *.onnx
+models/
+
+# Engine output and hub state (rebuilt by running the engine; see README)
+runs/
+data/caviar/
+data/urfd/
+data/umn/
+data/hub.sqlite
 
 # Python
 __pycache__/

@@ -41,3 +41,20 @@ everything.
 | [MEVA](https://mevadata.org/) | CC-BY-4.0 | Multi-camera footage |
 | [TfL JamCams](https://api.tfl.gov.uk/Place/Type/JamCam) | TfL open data terms | Live crowd levels |
 | Gemini, Groq, Airouter APIs | Provider terms | Event confirmation, questions, fallback |
+
+### Added in the first build session (2026-10-06)
+
+| Resource | Licence or terms | Used for |
+|---|---|---|
+| [MEVA KRTD camera models](https://gitlab.kitware.com/meva/meva-data-repo/-/tree/master/metadata/camera-models/krtd) + clip table | CC-BY-4.0 (MEVA) | Camera positions, view cones, ground homographies (`data/cameras.json`) |
+| MEVA clips, 2018-03-07 11:00 slot, 9 cameras (first ~140 MB of each) | CC-BY-4.0. Attribution: "MEVA dataset, Kitware/IARPA DIVA, mevadata.org" | The multi-camera site in the grid and on the map |
+| [CAVIAR](https://homepages.inf.ed.ac.uk/rbf/CAVIARDATA1/) INRIA lobby clips + ground-truth XML | EC Funded CAVIAR project/IST 2001 37540; free for research with acknowledgement | Sudden-run truth and walking/meeting negatives (overhead camera; see `EVALUATION.md`) |
+| [UR Fall Detection Dataset](https://fenix.ur.edu.pl/~mkepski/ds/uf.html) cam0 videos + per-frame labels (30 falls, 20 everyday activities) | Free for research; cite Kwolek & Kepski, CMPB 2014 | Fall evaluation (front-facing camera) |
+| [UMN Unusual Crowd Activity](https://mha.cs.umn.edu/proj_events.shtml) "Crowd-Activity-All" video | University of Minnesota; research use | Sudden-run evaluation (11 crowd panic scenes, labels burned into the frame) and the Clips showcase |
+| Ultralytics YOLO11m-pose weights (n and s also downloaded for comparison) | AGPL-3.0 | Pose model, in `models/` (GitHub release v8.4.0) |
+| CesiumJS 1.146 from cdn.jsdelivr.net | Apache-2.0 | Globe, no build step |
+| Cesium World Terrain + ion imagery | Cesium ion terms (free account token in `.env`) | Ground the cameras and people sit on |
+| PyTorch (CUDA 12.8 wheels) | BSD-3 | Runs the pose model on the GPU |
+| FastAPI, Uvicorn, python-multipart, PyYAML, lap | MIT / BSD / Apache | Hub, uploads, config, tracker assignment |
+| FFmpeg (system install) | LGPL/GPL | H.264 output browsers can play |
+| Esri World Imagery tiles | Esri terms; attribution "Esri, Maxar, Earthstar Geographics" shown on the map | Map imagery when the Cesium token is not valid for the page's address |

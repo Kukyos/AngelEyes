@@ -115,6 +115,90 @@ classifier. Consistent with D5 (no gender inference).
   `CAPABILITY_MAP.md` §3.4. If built, it never links a registered person to a camera
   track.
 
+## D13 — Sole builder; build now (2026-10-06)
+
+The user is the only builder and holds every lane and the integrator role. They
+chose to start building before the 24-hour clock ("we have planned enough"). This
+answers `STATE.md`'s "who builds what" and "start early" items. The organisers' rule
+on code written before the clock still needs to be checked.
+
+## D14 — Globe: plain CesiumJS page now (supersedes D4 for the build) (2026-10-06)
+
+gods-eye-view needs Node 24.14+; this machine has 24.13.1, so pass/fail check 1.7
+fails as written. We took the documented fallback: one HTML page (`web/index.html`)
+that loads CesiumJS 1.146 from jsDelivr and is served by the hub. There is no Node
+build step, and all data comes from the hub API. Cesium ion world terrain and
+imagery, with a "Photoreal 3D" toggle that tries Google tiles and says so if they
+fail. The fork stays possible later; nothing in the hub depends on the page.
+
+## D15 — Demo site: MEVA's Muscatatuck town, cameras from real calibration (2026-10-06; slot and fall data revised in D17)
+
+The grid and globe show the 2018-03-11 16:15 time slot of MEVA. That slot has 14
+outdoor cameras with published KRTD calibration in a shared ENU frame with a known
+lat/lon origin, so camera positions, view cones and each camera's ground homography
+come from MEVA's own models rather than from a hand survey (`angelseye/geo.py` →
+`data/cameras.json`, which still uses the planned "4 pixel ↔ lat/long points" form).
+The 9 most active of them are analysed. Fall and sudden-run evaluation uses CAVIAR
+(INRIA lobby clips with per-frame labels), because MEVA has no falls or runs. The
+campus route (`STATE.md`) is still open for our own recordings.
+
+## D16 — Stack confirmed for the build (2026-10-06)
+
+Python 3.12 venv (uv); torch CUDA 12.8 build (an RTX 4060 laptop GPU is available, so
+the CPU-only assumption is lifted for this machine); ultralytics YOLO11-pose +
+ByteTrack; FastAPI + SQLite + WebSocket; ffmpeg for H.264 output. MediaPipe is
+not added yet. The hand-sign SOS needs our own footage to test, so the whole-body
+distress pose (both wrists above the head) is the SOS trigger for now. Event `geo`
+is `[lat, lon]`.
+
+## D17 — Data, revised after looking at it (2026-10-06, supersedes D15's slot and fall data)
+
+- **Site slot:** 2018-03-07 11:00, not 2018-03-11 16:15. A person-count sweep of the 16:15
+  slot found at most 5 people on any of 9 cameras and most cameras empty. Ranking every
+  annotated slot by MEVA annotation volume picked 11:00: 12 calibrated outdoor cameras
+  (G639 is dropped everywhere: its KRTD model has fx 775 vs fy 1326 and fails the ground
+  check). We analyse 9 of the 12, the first ~2.5–5 minutes of each.
+- **Fall data:** UR Fall Detection (front camera), not CAVIAR. CAVIAR set 1 is an
+  overhead fisheye; the pose model does not see people lying or running from straight
+  above, and "upright" has no meaning there. CAVIAR falls are marked unscored.
+- **Run data:** UMN crowd video (11 scenes; its own "Abnormal Crowd Activity" overlay
+  is the ground truth) plus CAVIAR's runs.
+- **Model:** YOLO11m-pose at imgsz 1280, conf 0.1 into ByteTrack (its low-score pass keeps
+  blurred runners on their tracks). Measured on UMN running frames: m@1280 found the
+  most people; 640 found none on 320 px video.
+- **Motion gate off** (`motion_gate: 0`): the global-mean test skipped 17% of G506 frames
+  with small walkers in view. Needs a per-block test before it can be turned on.
+- **Thresholds tuned on the evaluation clips** (pixel-space speeds from UMN scene 1; fall
+  `down_s`, hip drop and track-repair joins from UR Fall). There is no held-out split, so
+  the numbers in `EVALUATION.md` are optimistic.
+
+## D18 — Screen design: black and white, no labels-for-the-sake-of-it (2026-10-06)
+
+User direction: simple black and white, smooth and responsive, no product name or
+claims text on screen; what we detect is the point. The overlay burned into the
+footage is monochrome too (grey = tracked, white = flagged, inverted tag = alert). The
+map has no sky, sun, moon or atmosphere, and uses grayscale imagery.
+
+## D19 — Open-ended activity from a live phone camera (2026-10-07)
+
+User direction: a phone mounted above as the CCTV camera, with the system saying what a
+person is doing in open vocabulary (drinking water, reading a book, leaving the frame),
+not a fixed list.
+
+- **Phone:** Android with the IP Webcam app (MJPEG over Wi-Fi), read directly by OpenCV.
+- **Model:** Airouter `alibaba/qwen3-vl-instruct` (user's choice). Measured on one CCTV
+  frame: Qwen3-VL answered correctly at 3.1 s and $0.00031. `nemotron-nano-12b-vl`
+  invented two people who weren't there. `ling-3.0-flash-vl` spent its budget
+  reasoning and returned no answer. Groq `qwen3.8-27b` was faster (1.3 s) but was not chosen.
+- **Schema:** a new event type `activity`, approved by the user, with the description in
+  `evidence.series.caption`. No other field added.
+- **Cost control:** the model runs only with `--live` / `--describe` and only while a
+  person is in view, at most every 4 s (1.5 s on enter or leave). The engine records
+  the provider's reported cost per run (`events.json` → `vlm`). The user's balance was
+  $0.25; a ~$2 top-up was recommended for building and the showcase.
+- **Privacy:** only frames with heads already blurred leave the machine. The close-up
+  blur was resized for near faces after the first live test showed a readable face.
+
 ## Still open
 
 Tracked in `STATE.md` → "Not decided".

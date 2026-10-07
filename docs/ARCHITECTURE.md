@@ -96,6 +96,41 @@ Stored in SQLite, pushed over WebSocket:
 
 **No event without who, when and evidence** — that is the PSI07 key rule.
 
+As built (D16, D19): `type` is one of `sos, following, loitering, fall, sudden_run, activity`;
+`t_start`/`t_end` are ISO 8601 local wall-clock times (clip start + offset);
+`geo` is `[lat, lon]` of the subject at the start (camera position if uncalibrated,
+`null` if neither); `clip_path` is relative to `runs/` (served at `/media/`);
+`evidence.series` carries the behaviour's curves plus `video_s: [start, end]`, the
+offsets into the source video. The hub rejects records missing any of these
+(`angelseye/hub.py` → `Event`). Per-person labels (standing, walking, running, down)
+are in `tracks.jsonl`, not in events.
+
+`activity` events (D19) describe what one person is doing in words: `evidence.series.caption`
+("holding a scrambled puzzle cube", "entered the frame", "left the frame"), `source`
+(`vision model` or `tracker`), and for the model its name, latency and the note that the
+confidence is self-reported. The keyframe is the exact image the model was shown.
+`clip_path` is `null` for activities. If the tracker switches a person's ID mid-activity,
+the new ID is appended to `track_ids` instead of logging a leave and an entry.
+
+### Live camera and open-ended activity (built 2026-10-07)
+
+```
+phone (IP Webcam, MJPEG) -> newest-frame reader -> pose + ByteTrack (15 fps) -> rules -> events
+                                                        |                         -> hub /api/events, WebSocket
+                                                        | heads blurred, P<id> labels
+                                                        v
+                             every ~4 s, or sooner when someone enters or leaves:
+                             [whole view] + [per-person close-up 1 s ago | now]
+                                   -> vision model (Airouter Qwen3-VL) -> "activity" events
+annotated frames -> hub /api/live/<name> -> MJPEG -> Camera view
+```
+
+- `python -m angelseye.engine http://PHONE_IP:8080/video --live --name phone --hub http://127.0.0.1:8000`
+- Close-ups are cut from the full-resolution frame, so a far CCTV figure still reaches
+  the model in detail. They come after head blur, and the model never sees our captions,
+  so it can't echo itself.
+- `--describe` adds the same descriptions to a file run; the hub's upload mode uses it.
+
 ### Privacy built in
 Heads are blurred from pose head keypoints on every frame that leaves the engine. A
 rolling buffer keeps only event clips (~5 s either side).
