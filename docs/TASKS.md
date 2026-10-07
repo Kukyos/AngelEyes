@@ -63,7 +63,7 @@ something only verified in theory.
 | 2.C2 | Cameras with view cones; fly-to | solo | ☑ cameras, view cones from calibration, fly-to on event |
 | 2.D1 | Hub: FastAPI + SQLite event store + WebSocket + clip serving | solo | ☑ FastAPI + SQLite + WebSocket + /media + live MJPEG relay |
 | 2.D2 | Alert card; responder phone page | solo | ☑ toast + responder page (`/responder`) |
-| 2.R1 | Watch rules: admin types a rule ("flag if a person raises their hand") → compiled to pose/object/pair checks (`angelseye/rules.py`), hub `/api/rules`, rule box on the Camera page, `rule` events (D20) | kukyos | ☐ |
+| 2.R1 | Watch rules: admin types a rule ("flag if a person raises their hand") → compiled to pose/object/pair checks (`angelseye/rules.py`), hub `/api/rules`, rule box on the Camera page, `rule` events (D20) | kukyos | ◐ compile→confirm→hub→engine→event runs end to end; refusals work live; hand_up/jump only pass synthetic checks, no real true positive yet (2.R4); pair rule floods crowds |
 | 2.R2 | Watch rules: YOLOE open-vocab objects for person–object rules, at a reduced rate; fps cost from `angelseye.bench` | kukyos | ☐ |
 | 2.R3 | Watch rules: gated vision-model yes/no for rules geometry can't express (prefilter first, 2 consecutive yes) | kukyos | ☐ |
 | 2.R4 | Watch rules: record + label clips (raise hand, jump ×3, bend down, one person–person, one person–object) and score in `angelseye.eval` | kukyos | ☐ |
@@ -86,12 +86,15 @@ something only verified in theory.
 | I2 | Cut vision-model tokens: send only on change, back off on repeated answers, smaller image; measure from `vlm` stats | | ☐ |
 | I3 | Ghost subjects: show/use a track only after strong detections + visible keypoints; check false alarms in `eval` | | ☐ |
 | I4 | Vision-model latency 3–14 s: faster model or fewer people per call | | ☐ |
-| I5 | Check the model's self-reported confidence against labelled clips before alerting on it | | ☐ |
+| I6 | One person drawn as several on live cameras (1280 upscale) → `model.live_imgsz: 640` | kukyos | ◐ webcam: 1 box, 1 ID per frame; phone stream not rechecked |
+| I7 | Non-events in the log (idle captions, clothing, desk loitering) | kukyos | ◐ built on `mvp1`; idle handling seen live, not scored |
+| I5 | Check the model's self-reported confidence against labelled clips before alerting on it | jonathan-16bit | ◐ offline evaluator and review protocol built; labelled clips and calibration decision still needed |
 
 ## Stage 4 — Side B
 
 | # | Task | Owner | Done |
 |---|---|---|---|
+| 4.0 | Side B setup without a GPU: `requirements-hub.txt` + MEVA site snapshot in `data/samples/site/` (README → "Screens only") | kukyos | ☑ on `mvp2`; checked from a fresh clone in a fresh venv |
 | 4.1 | Amber: per-track crops, CLIP embeddings, colours, height (A) | | ☐ |
 | 4.2 | Amber: search API, case ID, audit log, path + next-camera prediction (D) | | ☐ |
 | 4.3 | Amber: path on the globe (C) | | ☐ |

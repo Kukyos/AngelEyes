@@ -96,7 +96,7 @@ Stored in SQLite, pushed over WebSocket:
 
 **No event without who, when and evidence** — that is the PSI07 key rule.
 
-As built (D16, D19): `type` is one of `sos, following, loitering, fall, sudden_run, activity`;
+As built (D16, D19, D20): `type` is one of `sos, following, loitering, fall, sudden_run, activity, rule`;
 `t_start`/`t_end` are ISO 8601 local wall-clock times (clip start + offset);
 `geo` is `[lat, lon]` of the subject at the start (camera position if uncalibrated,
 `null` if neither); `clip_path` is relative to `runs/` (served at `/media/`);
@@ -111,6 +111,12 @@ are in `tracks.jsonl`, not in events.
 confidence is self-reported. The keyframe is the exact image the model was shown.
 `clip_path` is `null` for activities. If the tracker switches a person's ID mid-activity,
 the new ID is appended to `track_ids` instead of logging a leave and an entry.
+
+`rule` events (D20) are admin-written watch rules (`angelseye/rules.py`, hub `/api/rules`):
+`evidence.series` carries `rule_id`, `rule_text`, the compiled `spec`, the measured `signals`
+(e.g. `wrists_up`, `torso_deg`, `jumps_at_s`, `distance_m`), `held_s` and `confidence_is`.
+`confidence` here is keypoint visibility (how well the pose was seen), not a probability.
+Two rules matching one person are two events.
 
 ### Live camera and open-ended activity (built 2026-10-07)
 
