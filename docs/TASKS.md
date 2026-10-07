@@ -106,7 +106,7 @@ something only verified in theory.
 | 4.16 | Engine: push rolling frame-brightness per camera to hub (for "dark" cost) | Jerem | ☑ POST /api/brightness/{camera} + GET /api/brightness; engine BrightnessPusher |
 | 4.17 | Safewalk engine: angelseye/safewalk.py - A* with dynamic cost length x (1 + deserted + dark + incident) | Jerem | ☑ SafeWalk class with route() + heatmap(); hub /api/safewalk endpoint |
 | 4.18 | Globe: two route polylines (fastest=grey, safest=green), heatmap raster (deserted/dark), incident pins | Jerem | ☑ SafeWalk tab with origin/dest picker, dual routes, heatmap legend |
-| 4.19 | UI: route picker (origin/dest click on globe), toggle fastest/safest, legend | Jerem | ☐ |
+| 4.19 | UI: route picker (origin/dest click on globe), toggle fastest/safest, legend | Jerem | ☑ Done in 4.18 (origin/dest click, mode toggle, distance legend) |
 | 4.20 | Demo polish: ensure hub-down error state, zero console errors, responsive on phone | Jerem | ☐ |
 
 ## Stage 5 — Finish
