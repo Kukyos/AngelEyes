@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (first build session).
+Last updated: 2026-10-07 (issues doc after the first build).
 
 ---
 
@@ -28,7 +28,12 @@ Last updated: 2026-10-07 (first build session).
 - **Measured** (`docs/EVALUATION.md`, `angelseye.eval`, 59 public clips): fall P 0.80 / R 0.27,
   sudden run P 0.60 / R 0.56. The thresholds were tuned on those same clips, so the numbers
   are optimistic; the false-alarm fixes traded fall recall (it was 0.53) for precision.
-- **Sole builder** (D13): the user holds every lane.
+- **Team:** D13 made the user sole builder; teammates are now working too. Lanes are not
+  re-assigned yet; claim rows in `TASKS.md` before touching code.
+- **Improvements open to claim:** `docs/IMPROVEMENTS.md` (I1–I5: false enter/leave, token
+  use, ghost subjects, model latency, self-reported confidence), rows in `TASKS.md`.
+- **Next build (the user's):** admin-written watch rules on the live camera ("flag if a person
+  raises their hand", "…jumps three times", person–person and person–object relations).
 
 ## Decided this session
 
@@ -90,6 +95,7 @@ Last updated: 2026-10-07 (first build session).
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | Issues doc | Wrote `IMPROVEMENTS.md` (I1–I5) with measured evidence from the hub DB and `vlm` stats; TASKS rows for teammates. |
 | 2026-10-07 | First build | Engine, hub, eval, bench, web page (Camera / Site / Clips), responder page. MEVA site from calibration; UR Fall, UMN and CAVIAR scored; live phone camera with open-ended activity via Qwen3-VL. Decisions D13–D19. Committed and pushed. |
 | 2026-10-06 | Pre-planning | Pushed docs to GitHub. Re-read PSI07's must-do list. Wrote `CAPABILITY_MAP.md` (all behaviours by layer, Side B features, legal paths); added D10–D12 and task 0.8. No code. |
 | 2026-10-06 | Planning | Read the booklet; compared all 10 statements; chose PSI07 + safety layer; named it Angel's Eye; researched data, keys and costs; wrote these docs. No code. |

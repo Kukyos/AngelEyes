@@ -74,6 +74,16 @@ something only verified in theory.
 | 3.3 | People dots on the globe from homography | solo | ☑ people dots on the map from the homography |
 | 3.4 | First eval numbers and `angelseye.bench` numbers recorded | solo | ◐ eval numbers recorded; bench on a busy camera still to run |
 
+## Improvements — open to teammates (details, evidence and fixes in `IMPROVEMENTS.md`)
+
+| # | Task | Owner | Done |
+|---|---|---|---|
+| I1 | False "entered"/"left" on the live camera: tracker buffer, merge by position + colour, "left" only at a frame edge; ground-truth clip + score in `eval` | | ☐ |
+| I2 | Cut vision-model tokens: send only on change, back off on repeated answers, smaller image; measure from `vlm` stats | | ☐ |
+| I3 | Ghost subjects: show/use a track only after strong detections + visible keypoints; check false alarms in `eval` | | ☐ |
+| I4 | Vision-model latency 3–14 s: faster model or fewer people per call | | ☐ |
+| I5 | Check the model's self-reported confidence against labelled clips before alerting on it | | ☐ |
+
 ## Stage 4 — Side B
 
 | # | Task | Owner | Done |
