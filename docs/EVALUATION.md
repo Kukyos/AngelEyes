@@ -97,10 +97,10 @@ good as the API that minute. Pose and pair rules do not depend on it.
 |---|---|
 | Working system | Live showcase at the table (`PRODUCT.md`) |
 | Source code + README | Public GitHub repo; setup, run and reproduce steps |
-| Data pipeline | Camera → motion gate → pose → tracker → behaviours → events, with intermediate files (`tracks.jsonl`, events JSON) |
-| Core model / reasoning | YOLO11n-pose + ByteTrack + behaviour rules; config thresholds documented |
+| Data pipeline | Camera → pose → tracker → track repair → ground plane → behaviours → events, with intermediate files (`tracks.jsonl`, events JSON); README → Data pipeline |
+| Core model / reasoning | YOLO11m-pose + ByteTrack + track repair + behaviour rules; Qwen3-VL captions; config thresholds documented |
 | Evidence and explanation | Per-event keyframes, speed and path series, confidence, timestamps |
-| Sample input and output | One staged clip in `data/samples/` with its events JSON and annotated video |
+| Sample input and output | README → Sample input → output: UR Fall `fall-02`, its command, events JSON and the rule it broke |
 | Scope note | MVP vs stretch, from `PRODUCT.md` |
 | Declared resources | `RESOURCES.md`, copied into the README |
 | Submission | Repo link in the [Google Form](https://forms.gle/KGjkU5u66Va1MDhu5) before evaluation ends |
