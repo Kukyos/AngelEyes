@@ -377,6 +377,87 @@ def _track(tid, pts, boxes=None, kps=None, dt=0.1):
     return tr
 
 
+# --- why an event fired, in the detector's own terms -------------------------------
+def explain(ev, cfg, calibrated):
+    """The rule an event broke: each check with what was measured and the config limit, built only from what the
+    event's evidence recorded (no re-detection). ok is True/False, or None when the evidence does not carry it.
+    -> {"rule", "plain", "checks": [{"check", "measured", "limit", "ok"}], "chart"} or None (activity: no rule)."""
+    s, typ = ev["evidence"]["series"], ev["type"]
+    t0, t1 = s["video_s"]
+    sfx = "" if calibrated else "_uncalibrated"
+    unit = "m/s" if calibrated else "≈m/s"
+    chk = lambda check, measured, limit, ok: {"check": check, "measured": measured, "limit": limit, "ok": ok}
+    if typ == "fall":
+        c = cfg["fall"]
+        after = [r for t, r in s["box_height_ratio"] if t >= t0]
+        low = min(after) if after else None
+        down = (chk("Down: height dropped to at most this share of the upright height", f"{low:.0%}", f"≤ {c['max_height_ratio']:.0%}", True)
+                if low is not None and low <= c["max_height_ratio"] else
+                chk("Down: lying shape (torso angle or box width)", "not recorded in the evidence",
+                    f"torso ≥ {c['torso_angle_deg']}° or box {c['wide_ratio']}× wider than tall", None))
+        return {"rule": "Fall", "plain": "Someone upright went down within seconds and stayed down.",
+                "checks": [chk("Upright first (box taller than wide)", f"at {s['upright_at_s']:.1f} s", f"≥ {c['upright_ratio']}× taller", True),
+                           chk("Went down soon after being upright", f"{t0 - s['upright_at_s']:.1f} s", f"≤ {c['drop_window_s']} s",
+                               t0 - s["upright_at_s"] <= c["drop_window_s"]),
+                           down,
+                           chk("Stayed down", f"{t1 - t0:.1f} s", f"≥ {c['down_s']} s", t1 - t0 >= c["down_s"] - 0.05)],
+                "chart": {"label": "box height ÷ upright height", "points": s["box_height_ratio"],
+                          "limit": c["max_height_ratio"], "below": True, "span": [t0, t1]}}
+    if typ == "sudden_run":
+        c = cfg["sudden_run"]
+        lim, pmax = c["speed_mps" + sfx], c["prior_max_mps" + sfx]
+        prior = [v for t, v in s["speed_mps"] if t <= t0 - 1 + 1e-6]
+        checks = [chk("Running speed", f"{s['peak_mps']:.1f} {unit}", f"≥ {lim}", s["peak_mps"] >= lim),
+                  chk("Kept running", f"{t1 - t0:.1f} s", f"≥ {c['hold_s']} s", t1 - t0 >= c["hold_s"] - 0.05)]
+        if prior:  # the engine's 2 s window ends 1 s before the run; the curve keeps its last part
+            checks.append(chk("Walking just before (recorded part of the window)", f"{max(prior):.1f} {unit}", f"≤ {pmax}",
+                              max(prior) <= pmax))
+            ratio = s["peak_mps"] / max(sum(prior) / len(prior), 0.1)
+            checks.append(chk("Sudden: peak speed over walking pace", f"{ratio:.1f}×", f"≥ {c['jump_ratio']}×",
+                              True if ratio >= c["jump_ratio"] else None))
+        plain = "Someone walking broke into a run." + ("" if calibrated else
+                 " No camera calibration here, so speeds (≈m/s) are scaled by the person's height in the picture.")
+        return {"rule": "Sudden run", "plain": plain, "checks": checks,
+                "chart": {"label": f"speed ({unit})", "points": s["speed_mps"], "limit": lim, "below": False, "span": [t0, t1]}}
+    if typ == "loitering":
+        c = cfg["loitering"]
+        return {"rule": "Loitering", "plain": "Someone stayed in one small area for a long time.",
+                "checks": [chk("Time in one spot", f"{s['dwell_s']:.0f} s", f"≥ {c['min_s']} s", s["dwell_s"] >= c["min_s"]),
+                           chk("Area (radius)", f"{s['radius_m']:.1f} m", f"≤ {c['radius_m']} m", s["radius_m"] <= c["radius_m"])],
+                "chart": None}
+    if typ == "sos":
+        c = cfg["sos_pose"]
+        return {"rule": "SOS pose", "plain": "Both wrists held above the head.",
+                "checks": [chk("Held", f"{s['held_s']:.1f} s", f"≥ {c['hold_s']} s", s["held_s"] >= c["hold_s"])], "chart": None}
+    if typ == "following":
+        c = cfg["following"]
+        return {"rule": "Following", "plain": "One person retraced another's path a few seconds behind, through turns.",
+                "checks": [chk("Same path, seconds later", f"{s['path_error_m']:.1f} m off, {s['delay_s']:.1f} s behind",
+                               f"≤ {c['path_match_m']} m, {c['delay_min_s']}–{c['delay_max_s']} s",
+                               s["path_error_m"] <= c["path_match_m"] and c["delay_min_s"] <= s["delay_s"] <= c["delay_max_s"]),
+                           chk("Distance between them", f"{s['distance_m']:.1f} m", f"{c['dist_min_m']}–{c['dist_max_m']} m",
+                               c["dist_min_m"] <= s["distance_m"] <= c["dist_max_m"]),
+                           chk("Turns followed", str(s["matched_turns"]), f"≥ {c['min_turns']}", s["matched_turns"] >= c["min_turns"]),
+                           chk("Kept up", f"{s['duration_s']:.0f} s", f"≥ {c['min_s']} s", s["duration_s"] >= c["min_s"])],
+                "chart": None}
+    if typ == "rule":
+        hold = s["spec"].get("hold_s")
+        hold = cfg["rules"]["hold_s"] if hold is None else hold
+        sig = s["signals"]
+        if "question" in sig:  # a vision-model rule (2.R3): yes answers in a row from the describer
+            need = cfg["rules"]["vision_yes"]
+            first = chk("Vision model: " + sig["question"], f"yes {sig['yes_in_a_row']} times in a row", f"≥ {need}",
+                        sig["yes_in_a_row"] >= need)
+        else:
+            show = lambda v: " and ".join(map(str, v)) if isinstance(v, list) else str(v)
+            first = chk("Pose measured", "; ".join(f"{k.replace('_', ' ')}: {show(v)}" for k, v in sig.items()) or "—",
+                        "the rule's checks", True)
+        return {"rule": "Watch rule: " + s["rule_text"], "plain": "Will flag: " + s["spec"].get("summary", s["rule_text"]),
+                "checks": [first, chk("Held", f"{s['held_s']:.1f} s", f"≥ {hold} s", s["held_s"] >= hold - 0.05)],
+                "chart": None}
+    return None
+
+
 def demo():
     cfg = _cfg()
     # loitering: stays within 1 m for 70 s fires; walking past does not
@@ -396,6 +477,10 @@ def demo():
     jog = [(i * 0.3, 0) for i in range(80)]
     d = Detectors(cfg)
     assert not any(d.sudden_run(_track(4, jog[:k]), (k - 1) * .1) for k in range(20, 80))
+
+    slow = {"type": "sudden_run", "evidence": {"series": {"video_s": [5.0, 5.2], "peak_mps": 0.9,
+            "speed_mps": [[3.0, 0.3], [4.0, 0.3], [5.0, 0.9]]}}}
+    assert explain(slow, cfg, False)["checks"][0]["ok"] is False, "below the speed limit must not pass"
 
     # fall: upright box then wide box for 2.5 s fires; sitting (squarish, torso upright) does not
     up, wide, sit = (0, 0, 40, 170), (0, 120, 170, 170), (0, 60, 60, 170)

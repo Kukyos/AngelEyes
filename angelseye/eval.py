@@ -144,7 +144,8 @@ def tiou(a0, a1, b0, b1):
     return overlap(a0, a1, b0, b1) / u if u > 0 else 0.0
 
 
-def evaluate(gt_path):
+def read_truth(gt_path):
+    """ground_truth.csv -> (clips, {(clip, type): [(start, end)]}, {(clip, type) not scored})."""
     truth = defaultdict(list)
     clips, unscored = set(), set()
     for r in csv.DictReader(open(gt_path)):
@@ -153,6 +154,31 @@ def evaluate(gt_path):
             unscored.add((r["clip"], r["who"]))
         elif r["event_type"] != "none":
             truth[(r["clip"], r["event_type"])].append((float(r["true_start"]), float(r["true_end"])))
+    return clips, truth, unscored
+
+
+def label(events, gts):
+    """Match one clip's detections of one behaviour to its true intervals.
+    -> ([(event, "tp" | "dup" | "fp", true interval or None)], number of true events missed)."""
+    used, out = set(), []
+    for e in sorted(events, key=lambda e: tuple(e["evidence"]["series"]["video_s"])):
+        d0, d1 = e["evidence"]["series"]["video_s"]
+        hits = [(overlap(d0, d1, g0 - SLACK_S, g1 + SLACK_S), i) for i, (g0, g1) in enumerate(gts)]
+        hits = [h for h in hits if h[0] > 0]
+        free = [h for h in hits if h[1] not in used]
+        if free:
+            bi = max(free)[1]
+            used.add(bi)
+            out.append((e, "tp", gts[bi]))
+        elif hits:  # a second person flagged for the same true event (a crowd running)
+            out.append((e, "dup", gts[max(hits)[1]]))
+        else:
+            out.append((e, "fp", None))
+    return out, len(gts) - len(used)
+
+
+def evaluate(gt_path):
+    clips, truth, unscored = read_truth(gt_path)
     stats = {t: {"tp": 0, "fp": 0, "fn": 0, "dup": 0, "start_err": [], "tiou": []} for t in TYPES}
     hours, missing = 0.0, []
     for clip in sorted(clips):
@@ -165,27 +191,14 @@ def evaluate(gt_path):
         for typ in TYPES:
             if (clip, typ) in unscored:
                 continue
-            dets = [tuple(e["evidence"]["series"]["video_s"]) for e in run["events"] if e["type"] == typ]
-            gts = list(truth.get((clip, typ), []))
-            used = set()
-            for d0, d1 in sorted(dets):
-                hits = [(overlap(d0, d1, g0 - SLACK_S, g1 + SLACK_S), i) for i, (g0, g1) in enumerate(gts)]
-                hits = [h for h in hits if h[0] > 0]
-                free = [h for h in hits if h[1] not in used]
-                if free:
-                    bi = max(free)[1]
-                elif hits:  # a second person flagged for the same true event (a crowd running)
-                    stats[typ]["dup"] += 1
-                    continue
-                else:
-                    stats[typ]["fp"] += 1
-                    continue
-                used.add(bi)
-                g0, g1 = gts[bi]
-                stats[typ]["tp"] += 1
-                stats[typ]["start_err"].append(abs(d0 - g0))
-                stats[typ]["tiou"].append(tiou(d0, d1, g0, g1))
-            stats[typ]["fn"] += len(gts) - len(used)
+            labelled, missed = label([e for e in run["events"] if e["type"] == typ], truth.get((clip, typ), []))
+            for e, lab, g in labelled:
+                stats[typ][lab] += 1
+                if lab == "tp":
+                    d0, d1 = e["evidence"]["series"]["video_s"]
+                    stats[typ]["start_err"].append(abs(d0 - g[0]))
+                    stats[typ]["tiou"].append(tiou(d0, d1, *g))
+            stats[typ]["fn"] += missed
     out = {"gt": str(gt_path), "clips": len(clips) - len(missing), "missing_runs": missing,
            "video_hours": round(hours, 4), "types": {}}
     print(f"\n{out['clips']} clips, {hours * 60:.1f} min of video" + (f"; no run for {missing}" if missing else ""))

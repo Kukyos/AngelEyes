@@ -52,6 +52,23 @@ it overlaps the true interval within 1 s; extra detections of an already-matched
 Vision model (live activity): measured $0.000348 for one 746-token composite call
 (`runs/phone/events.json` → `vlm`), with latency 3–14 s per call in live use.
 
+## Staged clips: watch rules (2026-10-07, not formal ground truth)
+
+Two clips recorded by the team (`test4u.mp4` 31 s, `anothertest4u.mp4` 55 s; not in the repo: real faces), replayed
+as live cameras at real speed (`angelseye.engine <clip> --live`). Truth is what the team staged, with times read off
+the video by hand. Rules: "flag if a person raises their hand", "flag anyone holding a sharp object", "flag if
+someone is choking or strangling another person".
+
+| Staged action | Clip 1 | Clip 2 |
+|---|---|---|
+| Two people raise a hand | ✓ P1 3.2 s, P2 7.8 s | ✓ P1 2.8 s, P2 5.1 s, P1 9.5 s |
+| A capless pen held up ("sharp object", vision model) | ✓ on the run where calls returned in 6-11 s; ✗ on a run with 3 calls (slow API) | ✓ same; ✗ with 4 timeouts |
+| A bottle held up (should not fire; captioned) | ✓ captioned, not flagged | ✓ captioned, not flagged |
+| Hand on the other's neck (`hand_on_neck`) | ✓ P1→P2 26.1-27.4 s, 0.36 shoulder widths | ✗ missed: wrist 0.8 from the third person's neck (side of the neck, person at the frame edge) |
+
+The vision model's latency was 5.5-17 s per call during these runs (Airouter), so any rule that needs it is only as
+good as the API that minute. Pose and pair rules do not depend on it.
+
 ## Benchmark (2026-10-07, `python -m angelseye.bench data/meva/G506.avi --camera G506 --max-s 60`)
 
 | Metric | Value |

@@ -12,7 +12,7 @@ Spec:
      "hold_s": 1.0, "summary": "a person raises a hand above their head"}
 
 Checks (person): hand_up {side: either|both|left|right, above: head|shoulder},
-bent_over {min_deg}, jump {times, within_s}. Checks (pair): near {max_m}.
+bent_over {min_deg}, jump {times, within_s}. Checks (pair): near {max_m}, hand_on_neck.
 
 What geometry can't express but one person visibly shows (clothing, what they hold or do with an
 object) compiles to a yes/no question instead (2.R3):
@@ -39,7 +39,7 @@ CHECKS = {
         "bent_over": {"min_deg": (10, 90)},
         "jump": {"times": (1, 20), "within_s": (1, 60)},
     },
-    "pair": {"near": {"max_m": (0.2, 10)}},
+    "pair": {"near": {"max_m": (0.2, 10)}, "hand_on_neck": {}},
 }
 # D20: no rules on gender, age, identity, faces or a named person
 BANNED = re.compile(r"\b(gender|male|female|man|men|woman|women|boy|girl|age|aged|old|older|elderly|young|child|"
@@ -54,14 +54,22 @@ The engine can only check these things, per tracked person (subject "person"):
 - {{"check": "jump", "times": <1-20>, "within_s": <1-60, optional>}}  jumps this many times
 or between two tracked people (subject "pair"):
 - {{"check": "near", "max_m": <0.2-10, optional>}}  two people close together
+- {{"check": "hand_on_neck"}}  one person's hand at the other's neck or throat (choking, strangling, grabbing the throat)
 
-Person checks in one rule all have to be true at once. A pair rule has exactly one "near" check.
+Person checks in one rule all have to be true at once. A pair rule has exactly one check.
 "hold_s" (optional, seconds) is how long it must stay true, only if the rule says so ("for 5 seconds").
 Leave optional numbers out unless the rule states them.
 
 Reply {{"subject": ..., "checks": [...], "hold_s": ..., "summary": "<the rule in plain words, as checked>"}}.
-If the rule instead needs something visible on one person that these checks can't measure (what they wear,
-what they hold, what they do with an object), reply
+If the rule instead needs something visible that these checks can't measure, ask the vision model, which looks
+at each person in turn. That covers what a person wears or carries (a mask, a helmet, a red jacket, a bag, a
+knife), what they do with an object, and what they do to another person (fighting, hitting, pushing, grabbing,
+dragging). A rule about two or more people doing something together is asked about each person
+("fighting between two people" -> "Is this person fighting with, hitting or pushing another person?").
+Ask about what can be seen, not about intent: name the body parts, the contact and the objects, and give
+examples for a kind of object: "a sharp object" -> "Is this person holding a sharp or pointed object such as a
+knife, blade, scissors, needle or pen?". Choking or strangling is the pair check "hand_on_neck", not a question.
+Reply
 {{"subject": "person", "vision": "<one yes/no question about a single person, starting 'Is this person'>",
 "summary": "<the rule in plain words>"}}.
 If the rule needs anything else (sounds, places, counting people, emotions) or concerns gender, age,
@@ -109,7 +117,7 @@ def validate(spec):
             clean[k] = v
         out.append(clean)
     if subject == "pair" and len(out) != 1:
-        raise ValueError("a pair rule has exactly one near check")
+        raise ValueError("a pair rule has exactly one check")
     if sum(c["check"] == "jump" for c in out) > 1:
         raise ValueError("at most one jump check")
     hold = spec.get("hold_s")
@@ -138,7 +146,9 @@ def compile_rule(text, cfg):
     try:
         with urllib.request.urlopen(req, timeout=cfg["rules"]["compile_timeout_s"]) as r:
             reply = json.load(r)["choices"][0]["message"]["content"]
-    except Exception as e:  # network, quota, bad reply
+    except urllib.error.URLError as e:  # DNS / no route: the laptop is offline or switched networks
+        return {"error": f"can't reach the vision model ({getattr(e, 'reason', e)}); check the internet connection and try again"}
+    except Exception as e:  # quota, bad reply
         return {"error": f"model call failed ({e})"}
     return parse_reply(reply)
 
@@ -204,6 +214,16 @@ class Watch:
         """The describer's answer to a vision rule's question about one person."""
         n = self.yes.get((rid, tid), (0, 0))[0]
         self.yes[(rid, tid)] = (n + 1, conf) if yes else (0, conf)
+
+    def neck_gap(self, a, b):
+        """How far a's nearest visible wrist is from b's neck (mid-shoulders), in b's shoulder widths."""
+        ka, kb, mc = a.last.kp, b.last.kp, self.c["min_kpt_conf"]
+        if ka is None or not kp_ok(kb, [L_SH, R_SH], mc):
+            return None
+        neck = kb[[L_SH, R_SH], :2].mean(axis=0)
+        sw = float(np.linalg.norm(kb[L_SH, :2] - kb[R_SH, :2])) or 1.0
+        gaps = [float(np.linalg.norm(ka[w, :2] - neck)) / sw for w in (L_WR, R_WR) if ka[w, 2] >= mc]
+        return min(gaps) if gaps else None
 
     def hand_up(self, tr, chk):
         kp, mc = tr.last.kp, self.c["min_kpt_conf"]
@@ -273,6 +293,15 @@ class Watch:
                     n, conf = self.yes.get((rid, tr.id), (0, 0))
                     if n >= self.c["vision_yes"]:
                         cands.append(((tr.id,), {"question": spec["vision"], "yes_in_a_row": n}, conf))
+            elif spec["subject"] == "pair" and spec["checks"][0]["check"] == "hand_on_neck":
+                cands = []
+                for a in tracks:
+                    for b in tracks:
+                        if a is not b:
+                            d = self.neck_gap(a, b)
+                            if d is not None and d <= self.c["neck_sw"]:
+                                cands.append(((a.id, b.id), {"wrist_to_neck_shoulder_widths": round(d, 2)},
+                                              min(visibility(a, mc), visibility(b, mc))))
             elif spec["subject"] == "pair":
                 max_m = spec["checks"][0].get("max_m", self.c["near_m"])
                 cands = []
@@ -357,6 +386,15 @@ def demo():
     near = {"id": "r4", "text": "two people close", "spec": validate({"subject": "pair", "checks": [{"check": "near", "max_m": 1.0}]})}
     assert run([near], [lambda t, i: pose(dx=60 * i)] * 20, n_tracks=2), "people 0.3 m apart must fire"
     assert not run([near], [lambda t, i: pose(dx=600 * i)] * 20, n_tracks=2), "people 3 m apart must not fire"
+
+    neck = {"id": "r6", "text": "choking", "spec": validate({"subject": "pair", "checks": [{"check": "hand_on_neck"}]})}
+    def grab(t, i):  # person 2 reaches its right wrist to person 1's mid-shoulders
+        kp = pose(dx=150 * i)
+        if i == 1:
+            kp[R_WR, :2] = (320, 205)
+        return kp
+    assert run([neck], [grab] * 20, n_tracks=2), "a hand at the other's neck must fire"
+    assert not run([neck], [lambda t, i: pose(dx=150 * i)] * 20, n_tracks=2), "side by side, hands down must not fire"
 
     knife = {"id": "r5", "text": "someone holding a knife",
              "spec": validate({"subject": "person", "vision": "Is this person holding a knife?"})}

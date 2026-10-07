@@ -65,7 +65,7 @@ something only verified in theory.
 | 2.D2 | Alert card; responder phone page | solo | ☑ toast + responder page (`/responder`) |
 | 2.R1 | Watch rules: admin types a rule ("flag if a person raises their hand") → compiled to pose/object/pair checks (`angelseye/rules.py`), hub `/api/rules`, rule box on the Camera page, `rule` events (D20) | kukyos | ◐ compile→confirm→hub→engine→event runs end to end; refusals work live; hand_up/jump only pass synthetic checks, no real true positive yet (2.R4); pair rule floods crowds |
 | 2.R2 | Watch rules: YOLOE open-vocab objects for person–object rules, at a reduced rate; fps cost from `angelseye.bench` | kukyos | ☐ |
-| 2.R3 | Watch rules: gated vision-model yes/no for rules geometry can't express (prefilter first, 2 consecutive yes) | kukyos | ◐ compiles to a yes/no question, asked inside the describer call (D21); replay: "holding a laptop" fired (4 yes), "wearing a lanyard" missed; not live yet |
+| 2.R3 | Watch rules: gated vision-model yes/no for rules geometry can't express (prefilter first, 2 consecutive yes) | kukyos | ◐ compiles to a yes/no question, asked inside the describer call (D21); replay: "holding a laptop" fired (4 yes), "wearing a lanyard" missed; staged clips: "sharp object" (pen) fired on both when calls returned in time |
 | 2.R4 | Watch rules: record + label clips (raise hand, jump ×3, bend down, one person–person, one person–object) and score in `angelseye.eval` | kukyos | ☐ |
 | 2.D3 | Upload-a-video mode → events JSON + annotated video | solo | ◐ built (Clips → drop a video); not yet exercised end to end in the browser |
 
@@ -104,7 +104,9 @@ something only verified in theory.
 | 4.4 | SafeWalk: edge costs from counts, brightness, incidents (B) | Jerem | ☑ via 4.15-4.17 (cost fn in safewalk.py) |
 | 4.5 | SafeWalk: fastest vs safest route + heatmap on the globe (C) | Jerem | ☑ via 4.18-4.19 (SafeWalk tab, dual routes) |
 | 4.6 | Gemini confirmation and narration of candidate events (D) | solo | ◐ superseded in spirit by D19: Qwen3-VL describes activity live; event confirmation not built |
-| 4.7 | Plain-English questions over events (Groq + SQL tools) | | ☐ |
+| 4.7 | Plain-English questions over events (Groq + SQL tools) | solo | ☑ as Ask (D22): Airouter Qwen3-VL, one call per question, scoped to one incident's run or one live session, blurred picture on screen + keyframe, cited event IDs checked; refuses gender/age/face/identity. 3 questions checked: cited answer, refusal, "not in this footage" |
+| 4.24 | Incidents tab: detections matching labelled truth (eval's own matching; 8 falls, 9 runs + 5 same-event, = runs/eval.json) + live rule hits, with the rule broken as measured vs limit (`behaviours.explain`) | solo | ☑ all 22 shown pass every check under today's config; self-check fails a below-limit run |
+| 4.25 | Watch rules: two-person `hand_on_neck` (choking); vision questions phrased as visible things; "Use webcam" button; Remove stops engines the hub didn't start | solo | ◐ staged clips (EVALUATION): choke caught on clip 1 (26.1 s), missed on clip 2; pen caught when the model answers in time |
 | 4.8 | Encirclement behaviour | | ☐ |
 | 4.9 | TfL JamCams live crowd layer | | ☐ |
 | 4.10 | Route decision: use MEVA Muscatatuck town streets as 5 km demo route | Jerem | ☑ |

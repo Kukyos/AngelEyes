@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (branch `mvp3`: SafeWalk merged, World tab with public livestreams).
+Last updated: 2026-10-07 (branch `mvp4` = `mvp3` + demo: Incidents, Ask, choke rule, webcam button).
 
 ---
 
@@ -86,6 +86,24 @@ Last updated: 2026-10-07 (branch `mvp3`: SafeWalk merged, World tab with public 
   in 10 Brasov frames, 1280 found 10). Analyse seen live on Davao and Brasov: boxes, blur, person count on the tile.
   Distant seated crowds are still missed; false alarms on busy scenes not measured.
 
+- **Demo build (`mvp4`, D22):**
+  - **Incidents tab:** only detections that match labelled truth (eval's own matching: 8 falls, 9 sudden runs + 5
+    same-event; equals `runs/eval.json`) plus live watch-rule hits marked "not scored". Each shows the clip, the
+    measured curve against its limit and **the rule it broke**, check by check (`behaviours.explain`, measured vs
+    `config.yaml`). All 22 pass every check under today's config.
+  - **Ask** (4.7): one Airouter Qwen3-VL call per question, scoped to one incident's run or one live session, with the
+    blurred picture on screen and the keyframe; cites event IDs (unknown IDs dropped); refuses gender/age/face/
+    identity before any call. On Incidents and on Camera. Checked by API: a cited count, a refusal, a "not in this
+    footage". 4.5-7 s, under $0.001 per question. The Incidents page was seen in Chrome; Ask was tested through
+    the API, and in Chrome only before the extension disconnected.
+  - **Watch rules:** two-person `hand_on_neck` (choking), measured from pose; vision questions phrased as visible
+    things ("sharp or pointed object such as a knife, blade, scissors, needle or pen"). Staged clips in EVALUATION.
+  - **Camera:** "Use webcam" (this laptop's camera, device 0, no network). Remove now stops engines the hub didn't
+    start (after a hub restart): the hub answers their frames with 410 and they quit.
+  - Describer: every 2.5 s, 3 calls in flight (was 4 s, 2): a 2 s action was missed at 4 s. About $0.0006 a call.
+  - Checked against the original PDF (`materials/`): README now has the views, a sample input → output, how to
+    reproduce the numbers and a Scope note, the items the submission list names.
+
 ## Decided this session
 
 | Decision | Where |
@@ -112,6 +130,15 @@ Last updated: 2026-10-07 (branch `mvp3`: SafeWalk merged, World tab with public 
 
 ## Known problems (say them out loud, don't hide them)
 
+- **Stale runs in Clips and the database:** `runs/umn-crowd` (4 falls, 18 runs) predates today's config; the current
+  eval run of the same video has 0 falls, 15 runs. `fall-03` and two Davao `sudden_run` events (a stream test) are
+  also old/unchecked. Incidents and Ask don't use them; Clips does. Re-run or delete them before showing Clips (ask).
+- **Vision-model rules depend on Airouter's speed that minute:** 5.5-17 s per call during the staged tests; with
+  timeouts the pen rule didn't fire. Pose and pair rules don't depend on it.
+- **Choke on clip 2 missed:** the hand was at the side of the neck of a person at the frame edge (0.8 shoulder
+  widths); lowering the limit would fire on a hand raised beside someone (0.56+).
+- **Restarting the hub** leaves running engines alive; they keep showing, and Remove now stops them.
+
 - **World tab embeds are not blurred.** Until Analyse is pressed a tile is YouTube's own player (grayscale), so faces
   show as the channel publishes them. Only the analysed picture is ours and blurred. Flagged to the user, who asked for
   the streams "visible first"; whether unblurred embeds are acceptable under the privacy rule is **not yet confirmed**.
@@ -137,6 +164,10 @@ Last updated: 2026-10-07 (branch `mvp3`: SafeWalk merged, World tab with public 
   needs context (zones) before a home or office demo.
 
 ## First steps for the next session
+
+- Before the demo: one hub (`python -m angelseye.hub --port 8000`), check `/api/showcase`, click every incident,
+  ask one question; decide whether to re-run or remove the stale `umn-crowd` / `fall-03` / Davao runs (Clips).
+- Record SOS / following / loitering clips and add them to `ground_truth.csv` so they can be scored.
 
 - Try Analyse on two or three World streams at once on the 4060 (`hub.max_engines: 4`) and write the fps in
   EVALUATION; check the false-alarm rate on busy scenes (Times Square, Sukhumvit) before showing them.
@@ -167,6 +198,7 @@ Last updated: 2026-10-07 (branch `mvp3`: SafeWalk merged, World tab with public 
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | Demo (mvp4) | Incidents tab (verified only, rule broken measured vs limit), Ask (Airouter, scoped, cited, refusals), `hand_on_neck`, visible-thing vision questions, Use webcam, Remove fix, README checked against the PDF. Staged clips: hands ✓✓, pen ✓ when the API is fast, choke ✓ clip 1 / ✗ clip 2. |
 | 2026-10-07 | SafeWalk merge + World streams | Merged `feat/safewalk`; graph to JSON, stdlib Dijkstra, config thresholds, replay-time costs, finished SafeWalk tab. World tab: 12 livestreams, Analyse/Captions toggles (yt-dlp, `--no-describe`), paced HLS reader. Checked in Chrome. |
 | 2026-10-07 | mvp3 + rule questions | Branch `mvp3` pushed. D21 caption priorities; 2.R3 vision rules ride the describer call (2 yes in a row). Replay: laptop rule fired, lanyard rule missed. |
 | 2026-10-07 | Live accuracy (I10) | Phone feed was sideways: `--rotate`, rotate option on Add camera. Subject tiles replace enter/leave log lines. `trackers/live.yaml`, neutral prompt, 2 calls in flight. Replay: down 648→26 frames, IDs 20→14, 0 false alarms, 2.1–2.7 s per call. Not yet live. |

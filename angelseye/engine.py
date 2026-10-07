@@ -95,6 +95,8 @@ class LatestFrame:
                     self.frame, self.n = f, self.n + 1
                     self.cond.notify_all()
                 continue
+            if self.pace and isinstance(self.src, str) and Path(self.src).is_file():
+                break  # a recording replayed as a live camera ends at its last frame
             fails += 1
             if fails > 30:  # ~30 s without a frame: give up
                 break
@@ -116,7 +118,7 @@ class FramePusher:
     """Sends the newest annotated frame to the hub's live view on its own thread."""
 
     def __init__(self, url):
-        self.url, self.img, self.people = url, None, []
+        self.url, self.img, self.people, self.removed = url, None, [], False
         self.ev = threading.Event()
         threading.Thread(target=self._run, daemon=True).start()
 
@@ -133,6 +135,9 @@ class FramePusher:
                 req = urllib.request.Request(self.url, data=jpg.tobytes(), method="POST", headers={
                     "Content-Type": "image/jpeg", "X-People": json.dumps(self.people)})
                 urllib.request.urlopen(req, timeout=2).close()
+            except urllib.error.HTTPError as err:
+                self.removed = err.code == 410  # Remove was pressed on the page: this engine stops
+                time.sleep(1)
             except OSError:
                 time.sleep(1)
 
@@ -342,7 +347,7 @@ class Engine:
                 yield i / fps, frame
             return
         src = int(self.source) if str(self.source).isdigit() else str(self.source)
-        hls = isinstance(src, str) and ("m3u8" in src or "hls_playlist" in src)
+        hls = isinstance(src, str) and ("m3u8" in src or "hls_playlist" in src or Path(src).is_file())  # a file replays in real time
         reader, n, start, nxt = LatestFrame(src, cap, fps if hls else 0), 0, time.monotonic(), time.monotonic()
         try:
             while True:
@@ -353,6 +358,9 @@ class Engine:
                 frame, n = reader.next(n)
                 if frame is None:
                     print(f"{self.name}: stream ended", flush=True)
+                    return
+                if self.pusher and self.pusher.removed:
+                    print(f"{self.name}: removed on the page", flush=True)
                     return
                 yield time.monotonic() - start, frame
         finally:
@@ -595,6 +603,23 @@ class Engine:
         self.post(rec)
 
     # --- open-ended activity (vision model) ----------------------------------
+    def contact(self, active):
+        """A visible wrist of one person inside the top part of another person's box (head, neck, shoulders)."""
+        c, mc = self.cfg["describe"], self.cfg["sos_pose"]["min_kpt_conf"]
+        for a in active:
+            kp = a.last.kp
+            if kp is None:
+                continue
+            for w in (9, 10):  # COCO left / right wrist
+                if kp[w, 2] < mc:
+                    continue
+                x, y = kp[w, :2]
+                for b in active:
+                    x1, y1, x2, y2 = b.last.box
+                    if b is not a and x1 <= x <= x2 and y1 <= y <= y1 + c["contact_top"] * (y2 - y1):
+                        return True
+        return False
+
     def describe_step(self, t, frame, plain, img, active):
         """Who is in view (ignoring tracker ID switches) and what each person is doing. Arrivals and departures
         are not logged as events: the live page shows one tile per person in view (people())."""
@@ -642,6 +667,8 @@ class Engine:
                 if crop.size:
                     crops[tr.id] = crop.copy()
         d.add_frame(t, plain, crops)
+        if self.contact(active):
+            urgent = True  # min_interval_s instead of interval_s, so a short grab or choke gets two looks
         if crops:
             questions = [(r["id"], r["spec"]["vision"]) for r in (self.feed.rules if self.feed else [])
                          if r["spec"].get("vision")]
@@ -659,6 +686,7 @@ class Engine:
                 tr = self.tracks.get(cid)
                 for rid, yes in rule_answers.items():
                     self.watch.vision_answer(rid, cid, yes, conf)
+                    print(f"  VISION P{cid} {rid}: {'yes' if yes else 'no'}", flush=True)
                 if not phrase:
                     continue
                 if tr is not None and phrase == "idle":  # nothing happening: not an event; end what they were doing

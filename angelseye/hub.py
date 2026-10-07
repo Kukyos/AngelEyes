@@ -8,6 +8,7 @@ On start it loads every runs/*/events.json, so finished runs appear without re-r
 """
 import argparse
 import asyncio
+import base64
 import json
 import re
 import time
@@ -351,6 +352,8 @@ async def live_push(name: str, request: Request, session: str = ""):
     body = await request.body()
     if not re.fullmatch(r"[\w.-]{1,64}", name) or not body or len(body) > 3_000_000:
         raise HTTPException(400, "bad frame")
+    if name in removed:  # Remove was pressed: tell the engine to stop, even one this hub didn't start
+        raise HTTPException(410, "removed")
     try:  # who is in view right now, sent with the frame so tiles match the picture
         people = json.loads(request.headers.get("x-people") or "[]")
     except ValueError:
@@ -387,6 +390,7 @@ async def live_stream(name: str, request: Request):
 # A teammate's browser webcam (/webcam) posts raw frames here; only the engine on this machine may read them
 # back (loopback), so unblurred faces never leave. The engine's annotated, blurred output appears under /api/live.
 ingest: dict[str, tuple[float, bytes, str]] = {}
+removed: set[str] = set()  # camera names whose engine must stop (Remove), until started again
 engines: dict[str, dict] = {}  # camera name -> {"proc": Popen, "url": IP camera URL or None for a browser webcam}
 NAME_RE = r"[\w.-]{1,64}"
 
@@ -394,6 +398,7 @@ NAME_RE = r"[\w.-]{1,64}"
 def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0, describe: bool = True,
                  imgsz: Optional[int] = None):
     """One live engine per camera, run by the hub. Browser webcams and IP cameras share the cap."""
+    removed.discard(name)
     e = engines.get(name)
     if e and e["proc"].poll() is None:
         return
@@ -444,6 +449,14 @@ def source_add(src: Source, request: Request):
     return {"ok": True}
 
 
+@app.post("/api/sources/webcam")
+def source_webcam(request: Request):
+    """The camera built into the machine the hub runs on (device 0), read by the engine directly: no network."""
+    host_only(request)
+    start_engine("webcam", "0", None)
+    return {"ok": True}
+
+
 @app.get("/api/sources")
 def source_list():
     return [{"name": n, "url": e["url"], "running": e["proc"].poll() is None} for n, e in engines.items()]
@@ -455,6 +468,7 @@ def source_remove(name: str, request: Request):
     e = engines.pop(name, None)
     if e:
         e["proc"].terminate()
+    removed.add(name)
     live.pop(name, None)
     ingest.pop(name, None)
     return {"ok": True}
@@ -554,6 +568,119 @@ def job_status(job: str):
 
 
 NO_CACHE = {"Cache-Control": "no-store"}  # pages change while we build; never serve a stale one
+
+
+# --- demo: incidents that match labelled truth, and questions about the footage -----------------------------
+DATASETS = (("fall-", "UR Fall Detection"), ("Crowd-Activity", "UMN crowd panic"), ("", "CAVIAR lobby"))
+
+
+def site_ids():
+    return {c["id"] for c in json.loads((ROOT / "data/cameras.json").read_text())["cameras"]}
+
+
+def eval_copy(e):
+    """An eval run's event as the page sees it. Eval runs sit under runs/eval/ and reuse the demo runs' id scheme,
+    so ids and paths get an eval/ prefix (a cited id must never point at a demo run's clip)."""
+    e = json.loads(json.dumps(e))
+    e["id"] = "eval/" + e["id"]
+    e["clip_path"] = e["clip_path"] and "eval/" + e["clip_path"]
+    e["evidence"]["keyframes"] = ["eval/" + k for k in e["evidence"]["keyframes"]]
+    return e
+
+
+def eval_runs():
+    """{clip: (its events as shown, {shown id: label/truth note})}: every scored behaviour labelled by eval's own matching."""
+    from angelseye.eval import EVAL_RUNS, TYPES, label, read_truth
+    clips, truth, unscored = read_truth(ROOT / "data/ground_truth.csv")
+    out = {}
+    for clip in sorted(clips):
+        f = EVAL_RUNS / clip / "events.json"
+        if not f.exists():
+            continue
+        evs, labels = [], {}
+        for typ in TYPES:
+            mine = [e for e in json.loads(f.read_text())["events"] if e["type"] == typ]
+            if (clip, typ) in unscored:
+                evs += [eval_copy(e) for e in mine]
+                continue
+            for e, lab, g in label(mine, truth.get((clip, typ), []))[0]:
+                c = eval_copy(e)
+                evs.append(c)
+                labels[c["id"]] = (lab, g)
+        out[clip] = (evs, labels)
+    return out
+
+
+NOTE = {"tp": "matches the labelled truth", "dup": "same true event, another person", "fp": "false alarm (no labelled event)"}
+
+
+@app.get("/api/showcase")
+def showcase():
+    """Recorded incidents that match labelled ground truth (eval's matching; counts equal runs/eval.json), and live
+    watch-rule hits (not scored). Each with the rule it broke, measured against config.yaml."""
+    from angelseye.behaviours import explain
+    cfg, site = load_config(), site_ids()
+    verified = []
+    for clip, (evs, labels) in eval_runs().items():
+        ds = next(name for pre, name in DATASETS if clip.startswith(pre))
+        for e in evs:
+            lab, g = labels.get(e["id"], (None, None))
+            if lab in ("tp", "dup"):
+                verified.append({"event": e, "match": lab, "truth_s": list(g), "dataset": ds, "clip": clip,
+                                 "why": explain(e, cfg, False)})
+    live_rules = [{"event": e, "why": explain(e, cfg, e["camera"] in site)} for e in events(type="rule")]
+    scores = json.loads((RUNS / "eval.json").read_text())["types"] if (RUNS / "eval.json").exists() else {}
+    return {"verified": verified, "live": live_rules, "scores": scores}
+
+
+class Question(BaseModel):
+    question: str = Field(min_length=1, max_length=300)
+    event_id: Optional[str] = None  # an incident: its run's events + its keyframe
+    camera: Optional[str] = None    # a live camera: its current session's events
+    frame: Optional[str] = None     # the annotated (blurred) picture on screen, as a JPEG data URL
+
+
+@app.post("/api/ask")
+def ask_footage(q: Question):
+    """One question about the footage on screen, answered by the vision model from a narrow scope."""
+    from angelseye import ask
+    cfg = load_config()
+    images, notes = [], {}
+    if q.frame:
+        m = re.fullmatch(r"data:image/jpeg;base64,([A-Za-z0-9+/=]+)", q.frame)
+        raw = base64.b64decode(m.group(1)) if m else b""
+        if not raw or len(raw) > cfg["ask"]["frame_max_bytes"]:
+            raise HTTPException(400, "bad frame")
+        images.append(raw)
+    if q.event_id and q.event_id.startswith("eval/"):
+        clip = next((c for c, (evs, _) in eval_runs().items() if any(e["id"] == q.event_id for e in evs)), None)
+        if clip is None:
+            raise HTTPException(404, "no such incident")
+        scoped, labels = eval_runs()[clip]
+        notes = {i: NOTE[lab] for i, (lab, _) in labels.items()}
+        scope = f"Scope: the recorded clip '{clip}' (a public research dataset). The operator is looking at event [{q.event_id}]."
+    elif q.event_id:
+        with db() as con:
+            r = con.execute("SELECT * FROM events WHERE id=?", (q.event_id,)).fetchone()
+        if not r:
+            raise HTTPException(404, "no such event")
+        e = row(r)
+        session = e["id"].rsplit("-" + e["type"] + "-", 1)[0]
+        scoped = [x for x in events(camera=e["camera"]) if x["id"].startswith(session + "-")]
+        scope = f"Scope: camera '{e['camera']}', one session. The operator is looking at event [{e['id']}]."
+    elif q.camera:
+        cur = live.get(q.camera)
+        session = cur[2] if cur else ""
+        scoped = [x for x in events(camera=q.camera) if session and x["id"].startswith(session + "-")]
+        scope = f"Scope: live camera '{q.camera}', this session only. The first picture is its view right now."
+    else:
+        raise HTTPException(400, "pick an incident or a live camera first")
+    if q.event_id:
+        kf = next((x for x in scoped if x["id"] == q.event_id), {"evidence": {"keyframes": []}})["evidence"]["keyframes"]
+        p = (RUNS / kf[0]).resolve() if kf else None
+        if p and RUNS.resolve() in p.parents and p.exists():
+            images.append(p.read_bytes())  # written by the engine from its annotated, blurred frame
+    return ask.ask(q.question, scope, scoped, images, cfg, notes, clock=not (q.event_id or "").startswith("eval/"))
 
 
 @app.get("/")

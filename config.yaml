@@ -92,20 +92,24 @@ rules:                       # admin-written watch rules (D20, angelseye/rules.p
   jump_base_s: 2.0           # standing level = low shoulder position over this long
   jump_window_s: 5.0         # "jumps N times" within this long, unless the rule says
   near_m: 1.0                # "close together" unless the rule says
+  neck_sw: 0.4               # hand_on_neck: a wrist this close to another person's mid-shoulders, in their shoulder widths.
+                             # Staged clips: a choke 0.17-0.33; hands raised beside someone, a phone held up, 0.56+
   compile_timeout_s: 20
   poll_s: 3.0                # engine re-reads active rules from the hub this often
   vision_yes: 2              # a vision-model rule (2.R3) fires after this many yes answers in a row for one person
 
 describe:                    # open-ended activity via a vision-language model (only with --live or --describe)
-  interval_s: 4.0            # at most one call this often while someone is in view (~$0.0003-0.0005 per call measured)
-  min_interval_s: 1.5        # sooner when someone enters or leaves
+  interval_s: 2.5            # at most one call this often while someone is in view (~$0.0006 per call measured, 2 people);
+                             # at 4.0 a 2 s action (a bottle held up, a grab) was missed on the staged clip
+  min_interval_s: 1.5        # sooner when someone enters or leaves, or while one person's hand is on another
+  contact_top: 0.4           # "on another": a wrist in the top 40% of another person's box (head, neck, shoulders)
   frame_gap_s: 1.0           # the two moments compared in each close-up
   context_w: 768             # px width of the whole-view image in the composite
   crop_h: 240                # px height of each person close-up (was 288: fewer image tokens)
   crop_pad: 0.15             # padding around the person's box
   max_people: 4              # close-ups per call
   timeout_s: 20
-  max_in_flight: 2           # calls waiting on the model at once; latency is 3-22 s, so with 1 a caption could
+  max_in_flight: 3           # calls waiting on the model at once; latency is 3-22 s (5.5-6.7 s on the staged clips), so with 1 a caption could
                              # only refresh every ~8-20 s. interval_s still caps the call rate (cost)
   enter_s: 2.5               # a new track must last this long before "entered the frame"
   enter_strong: 12           # and have this many confident detections (filters flickers, coats on hooks)
@@ -130,3 +134,9 @@ streams:                     # public livestreams on the World tab (data/streams
   max_height: 720            # px; the NL stream is 4K
   imgsz: 1280                # wide street scenes, small people (like MEVA, unlike a webcam): 10 frames each at 640 vs 1280,
                              # Brasov 0 vs 10 people found, Davao 10 vs 11; 41-72 vs 24-54 ms/frame on the 4060
+
+ask:                         # questions about the footage (angelseye/ask.py), one vision-model call per question
+  max_events: 40             # newest events of the incident's run / live session put in front of the model
+  max_tokens: 350
+  timeout_s: 60              # measured 40 s for one picture + 1 event (2026-10-07); 3-14 s for captions
+  frame_max_bytes: 1500000   # the on-screen picture the page sends (it is resized to 768 px wide first)

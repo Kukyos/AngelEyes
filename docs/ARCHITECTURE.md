@@ -112,11 +112,16 @@ confidence is self-reported. The keyframe is the exact image the model was shown
 `clip_path` is `null` for activities. If the tracker switches a person's ID mid-activity,
 the new ID is appended to `track_ids` instead of logging a leave and an entry.
 
-`rule` events (D20) are admin-written watch rules (`angelseye/rules.py`, hub `/api/rules`):
+`rule` events (D20, D22) are admin-written watch rules (pose checks, the pair checks `near` and `hand_on_neck`,
+or a vision-model yes/no question; `angelseye/rules.py`, hub `/api/rules`):
 `evidence.series` carries `rule_id`, `rule_text`, the compiled `spec`, the measured `signals`
 (e.g. `wrists_up`, `torso_deg`, `jumps_at_s`, `distance_m`), `held_s` and `confidence_is`.
 `confidence` here is keypoint visibility (how well the pose was seen), not a probability.
 Two rules matching one person are two events.
+
+Verified incidents and the rule each broke: hub `/api/showcase` (eval's matching + `behaviours.explain`, D22).
+Questions about the footage: hub `/api/ask` → `angelseye/ask.py`, scoped to one incident's run or one live
+session, cited event IDs only (D22).
 
 ### Live camera and open-ended activity (built 2026-10-07)
 

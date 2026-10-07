@@ -9,13 +9,16 @@ vocabulary, what each person is doing ("holding a scrambled puzzle cube", "left 
 
 > Status and next steps: [`docs/STATE.md`](docs/STATE.md).
 
-## Three views (`python -m angelseye.hub`, then http://localhost:8000)
+## The screens (`python -m angelseye.hub`, then http://localhost:8000)
 
-| View | What it shows |
+| Tab | What it shows |
 |---|---|
-| **Camera** | A phone as a live CCTV camera: annotated feed, what each person is doing now, a running log |
+| **Camera** | Live cameras as CCTV tiles: a phone (IP Webcam), **Use webcam** (this laptop's camera), or any stream. Annotated, face-blurred feed; what each person is doing now; watch rules typed in plain English; **Ask about this camera** |
 | **Site** | 9 real, synchronised MEVA cameras of one town on a grid, their calibrated positions and view cones on a map, people as dots, events on a timeline |
-| **Clips** | Recorded clips (a crowd breaking into a run, a fall) and **drop-in upload**: any video comes back annotated with events |
+| **Incidents** | Detections that match labelled ground truth (falls, sudden runs) and live watch-rule hits. Each one shows the clip, the measured curve against its limit, **the rule it broke** check by check (measured vs `config.yaml` limit), who/when/confidence, and **Ask about this footage** |
+| **Clips** | Recorded clips and **drop-in upload**: any video comes back annotated with events |
+| **SafeWalk** | Fastest vs safest walk between two clicked points on the site's streets; streets cost more when a camera sees few people, an alert nearby, or no camera at all |
+| **World** | 12 public livestreams on a world map; **Analyse** runs the engine on one, **Captions** adds the vision model |
 
 Phone page for responders: http://localhost:8000/responder
 
@@ -64,8 +67,9 @@ people and log on the right, **Remove** to stop it. The phone must be reachable 
 **Phone held upright?** IP Webcam streams it sideways: pick **90°** next to the URL (the engine's `--rotate`).
 Sideways people read as lying down (false falls), track badly, and hand-up rules can't fire.
 The right panel shows one tile per person in view, kept across tracker ID switches.
-Watch rules can be poses ("raises a hand") or anything visible on one person ("anyone holding a knife",
-"someone in a red jacket"): the second kind becomes a yes/no question for the vision model and fires after 2 yes in a row.
+Watch rules can be poses ("raises a hand"), two people ("choking someone": one person's wrist at the other's
+neck) or anything visible on one person ("anyone holding a sharp object", "someone in a red jacket"): the last kind
+becomes a yes/no question for the vision model and fires after 2 yes in a row.
 
 ## Run it
 
@@ -98,6 +102,50 @@ Pose weights go in `models/` (`yolo11m-pose.pt` from the Ultralytics v8.4.0 rele
 The map uses Cesium ion terrain when `CESIUM_ION_TOKEN` is valid for the page's address,
 otherwise grayscale Esri imagery.
 
+## Sample input → output
+
+Input: `fall-02` from the UR Fall Detection dataset (3.6 s, one person). Command:
+`python -m angelseye.engine data/urfd/rgb/fall-02.mp4 --out runs/eval/fall-02`. Output in `runs/eval/fall-02/`:
+`annotated.mp4` (boxes, labels, blurred head), `tracks.jsonl` (every person, every frame), `clips/` and
+`keyframes/` (evidence), and `events.json` with this event (curve shortened):
+
+```json
+{"id": "fall-02-fall-001", "type": "fall", "camera": "fall-02", "track_ids": [1],
+ "t_start": "...", "t_end": "...", "confidence": 0.75,
+ "evidence": {"keyframes": ["fall-02/keyframes/fall-02-fall-001-0.jpg"],
+              "series": {"box_height_ratio": [[0.5, 1.0], [2.0, 0.761], [2.3, 0.46], [3.1, 0.376]],
+                         "upright_at_s": 0.5, "video_s": [2.0, 3.5]}},
+ "clip_path": "fall-02/clips/fall-02-fall-001.mp4", "geo": null}
+```
+
+Who: P1. When: 2.0–3.5 s (labelled truth: 1.3–3.63 s). Why (Incidents tab): upright at 0.5 s; went down 1.5 s
+later (limit ≤ 2.0 s); height fell to 38% of upright (limit ≤ 65%); stayed down 1.5 s (limit ≥ 1.0 s).
+
+## Reproduce the numbers
+
+```bash
+python -m angelseye.eval --build-gt   # data/ground_truth.csv from the datasets' own labels (docs/DATA.md: downloads)
+python -m angelseye.eval --run        # engine on all 59 clips -> runs/eval/
+python -m angelseye.eval              # scores -> runs/eval.json (the table in docs/EVALUATION.md)
+python -m angelseye.bench data/meva/<clip>.avi --camera G506 --max-s 60
+```
+
+Self-checks: `python -m angelseye.behaviours`, `angelseye.rules`, `angelseye.ask`, `angelseye.safewalk`.
+
+## Scope note
+
+**Minimum viable (built and scored):** detect and track people (YOLO11m-pose + ByteTrack + track repair), say what
+each is doing (standing / walking / running / down, plus open-vocabulary captions from a vision model), and flag
+abnormal behaviour with who, when and evidence. Fall and sudden run are scored against labelled public clips
+(`docs/EVALUATION.md`).
+
+**Stretch (built, not scored on labelled data):** loitering, following, raised-arms SOS; watch rules typed in
+plain English (pose, two-person contact, vision-model questions); questions about the footage answered by the
+vision model with cited events; the 9-camera MEVA site on a map; SafeWalk routes; public livestreams; remote
+webcams through a tunnel. Watch rules were checked on staged clips only (`docs/EVALUATION.md`).
+
+**Not built:** amber-alert person search, offender-registry layer, the Signal-for-Help hand sign.
+
 ## Measured
 
 Every number comes from `angelseye.eval` or `angelseye.bench`; see
@@ -108,7 +156,8 @@ tuned on the same clips; no held-out split).
 
 Pose (YOLO11m-pose) → tracker (ByteTrack) + track repair → ground-plane positions (homography,
 or pixel space scaled by body height) → rules for fall, sudden run, loitering, following and a
-raised-arms distress pose → events. Every few seconds, a face-blurred composite (whole view +
+raised-arms distress pose, plus the admin's watch rules → events (who, when, evidence) → hub (SQLite,
+WebSocket) → the page. Every few seconds, a face-blurred composite (whole view +
 close-ups of each person, a moment ago and now) goes to a vision-language model for the
 open-ended description. Thresholds: [`config.yaml`](config.yaml). Detail:
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -123,7 +172,8 @@ open-ended description. Thresholds: [`config.yaml`](config.yaml). Detail:
 ## Declared resources
 
 MEVA (CC-BY-4.0), CAVIAR, UR Fall Detection, UMN crowd video, Ultralytics YOLO11-pose
-(AGPL-3.0), ByteTrack, CesiumJS, Esri imagery, Airouter / Qwen3-VL, FastAPI, FFmpeg.
+(AGPL-3.0), ByteTrack, CesiumJS, Esri imagery, Airouter / Qwen3-VL, FastAPI, FFmpeg, OpenStreetMap (SafeWalk
+streets), yt-dlp and public YouTube livestreams (World), Volve Vision (camera list).
 Full list with terms: [`docs/RESOURCES.md`](docs/RESOURCES.md).
 
 ## Docs

@@ -236,3 +236,19 @@ the person is doing something with them or they matter (valuable, or could hurt 
 ## Still open
 
 Tracked in `STATE.md` → "Not decided".
+
+## D22 — Demo shows only verified incidents; questions are scoped and cited (2026-10-07)
+
+- The **Incidents** tab lists only detections that eval's own matching labels as true (or the same true event,
+  another person) against `data/ground_truth.csv`, so its counts equal `runs/eval.json`. False alarms are counted
+  under the list, not shown. Live watch-rule hits are listed separately as "not scored".
+- "The rule it broke" is computed from the event's recorded evidence against today's `config.yaml`
+  (`behaviours.explain`), never stored as a new event field. Where the evidence doesn't carry a check (a fall
+  seen by lying shape), it says so instead of printing a number.
+- **Ask** (4.7) is one vision-model call per question with a narrow scope: one incident's run or one live session,
+  never the whole database (it holds old test runs). The model sees only blurred engine output, must cite event
+  IDs, and IDs not in its context are dropped. Gender, age, face and identity questions are refused before any call.
+- Choking is measured, not asked: the vision model answered "no" to "choking" and "hand on neck" on a staged choke
+  from the close-up crops (it called it "hand on shoulder"), while pose geometry separated it cleanly (wrist
+  0.17-0.33 shoulder widths from the other's neck vs 0.56+ otherwise). So rules compile choking to the pair check
+  `hand_on_neck`, and vision questions are phrased as visible things with examples.
