@@ -95,6 +95,7 @@ rules:                       # admin-written watch rules (D20, angelseye/rules.p
   compile_timeout_s: 20
   poll_s: 3.0                # engine re-reads active rules from the hub this often
   vision_yes: 2              # a vision-model rule (2.R3) fires after this many yes answers in a row for one person
+  vision_max_age_s: 10.0     # expire old yes answers if the model stops responding or a person leaves
 
 describe:                    # open-ended activity via a vision-language model (only with --live or --describe)
   interval_s: 4.0            # at most one call this often while someone is in view (~$0.0003-0.0005 per call measured)

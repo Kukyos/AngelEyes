@@ -92,6 +92,8 @@ something only verified in theory.
 | I5 | Check the model's self-reported confidence against labelled clips before alerting on it | jonathan-16bit | ◐ offline evaluator and review protocol built; labelled clips and calibration decision still needed |
 | I9 | Camera page is a grid of all live cameras; add/remove IP cameras by URL (host only); cap in `hub.max_engines` | kukyos | ◐ endpoints checked with a fake MJPEG camera; page JS syntax-checked, not looked at in a browser; max_engines not measured |
 | I8 | Teammates test Side A remotely: hub token gate for tunnel traffic, `/webcam` browser page, hub starts one engine per webcam (max 2) | kukyos | ◐ gate, ingest and engine start checked locally with curl; not tried through ngrok or a real webcam |
+| I11 | Expire stale vision-rule answers and reject out-of-order replies; require a single-person question | jonathan-16bit | ◐ implemented and covered by offline tests on `dev/mvp3-offline-fixes`; live model check remains |
+| I12 | Require token for direct LAN access and keep camera source endpoints loopback-only | jonathan-16bit | ◐ implemented and covered by offline ASGI checks on `dev/mvp3-offline-fixes`; real tunnel check remains |
 
 ## Stage 4 — Side B
 

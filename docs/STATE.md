@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera fixes I10).
+Last updated: 2026-10-07 (branch `dev/mvp3-offline-fixes`, based on `mvp3`).
 
 ---
 
@@ -63,6 +63,10 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
   Checked with a fake MJPEG camera; the page itself has not been looked at in a browser yet.
 
 - **Branch `mvp3`** = `mvp2` + I10 (rotate, subject tiles, tracker memory, prompt fixes). New work goes here.
+- **Branch `dev/mvp3-offline-fixes`** (from `mvp3`): I11 expires old vision-rule yes answers,
+  ignores out-of-order replies and restricts questions to one person. I12 treats direct LAN
+  clients as remote for `HUB_TOKEN` and denies them camera-source endpoints. Offline unit
+  tests pass; neither live model behaviour nor a real tunnel has been checked here.
 - **Live-camera fixes (I10, `mvp2`/`mvp3`):** the phone stream was sideways (the main cause of false "down"/falls,
   ID churn and dead hand-up rules): Add camera now has a rotate option (`--rotate`). Enter/leave are no longer
   logged; the Camera page shows one tile per subject. Longer live tracker buffer; prompt no longer leaks
@@ -141,6 +145,7 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | Offline mvp3 guards | Branch `dev/mvp3-offline-fixes`: I11/I12 code and regression tests; 10 unittest cases and rules self-check pass with hub-only dependencies. No camera or real tunnel test on this machine. |
 | 2026-10-07 | mvp3 + rule questions | Branch `mvp3` pushed. D21 caption priorities; 2.R3 vision rules ride the describer call (2 yes in a row). Replay: laptop rule fired, lanyard rule missed. |
 | 2026-10-07 | Live accuracy (I10) | Phone feed was sideways: `--rotate`, rotate option on Add camera. Subject tiles replace enter/leave log lines. `trackers/live.yaml`, neutral prompt, 2 calls in flight. Replay: down 648→26 frames, IDs 20→14, 0 false alarms, 2.1–2.7 s per call. Not yet live. |
 | 2026-10-07 | Remote teammate testing | I8: token gate, `/webcam` page, ingest → engine auto-start, README section, RESOURCES (ngrok). Curl-checked only. |

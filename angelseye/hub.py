@@ -8,6 +8,7 @@ On start it loads every runs/*/events.json, so finished runs appear without re-r
 """
 import argparse
 import asyncio
+import ipaddress
 import json
 import re
 import time
@@ -106,16 +107,27 @@ clients: set[WebSocket] = set()
 jobs: dict[str, dict] = {}
 
 
+def remote_request(scope):
+    """Treat direct LAN clients and forwarded tunnel requests as remote."""
+    if any(k.lower() == b"x-forwarded-for" for k, _ in scope["headers"]):
+        return True
+    client = scope.get("client")
+    try:
+        return not (client and ipaddress.ip_address(client[0]).is_loopback)
+    except ValueError:
+        return True
+
+
 class Gate:
-    """Tunnel traffic (it carries X-Forwarded-For) needs HUB_TOKEN, as ?token= once (sets a cookie) or the cookie.
-    Local traffic (the engine, you on localhost) is not asked. No HUB_TOKEN set = no gate."""
+    """Remote traffic needs HUB_TOKEN, as ?token= once (sets a cookie) or the cookie.
+    Loopback engine traffic is exempt. No HUB_TOKEN set = no gate."""
 
     def __init__(self, inner):
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
         token = env("HUB_TOKEN")
-        if token and scope["type"] in ("http", "websocket") and any(k == b"x-forwarded-for" for k, _ in scope["headers"]):
+        if token and scope["type"] in ("http", "websocket") and remote_request(scope):
             hdr = {k.decode(): v.decode() for k, v in scope["headers"]}
             cookie = dict(c.strip().partition("=")[::2] for c in hdr.get("cookie", "").split(";") if c)
             given = dict(q.partition("=")[::2] for q in scope["query_string"].decode().split("&") if q).get("token")
@@ -329,7 +341,7 @@ def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0):
 
 
 def host_only(request: Request):
-    if "x-forwarded-for" in request.headers:
+    if remote_request(request.scope):
         raise HTTPException(403, "only on the host machine (localhost), not through the tunnel")
 
 
