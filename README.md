@@ -202,6 +202,9 @@ cd AngelEyes
 python -m venv .venv
 .venv\Scripts\activate             # PowerShell / cmd.   Git Bash: source .venv/Scripts/activate.   macOS/Linux: source .venv/bin/activate
 
+# PowerShell refuses activate with "running scripts is disabled"? Run first:
+#   Set-ExecutionPolicy -Scope Process Bypass
+
 # NVIDIA GPU: install torch from the CUDA index first (skip for CPU)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
@@ -211,7 +214,7 @@ The pose weights (`models/yolo11m-pose.pt`, 42 MB) download on the first engine 
 ahead of time:
 
 ```bash
-curl.exe -L -o models/yolo11m-pose.pt https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11m-pose.pt
+curl.exe -L --create-dirs -o models/yolo11m-pose.pt https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo11m-pose.pt
 ```
 
 ### Screens only (no GPU, no torch)
@@ -310,11 +313,11 @@ the layout `angelseye/eval.py` expects:
 | `data/meva/` (bench and Site only) | the 9 clips of 2018-03-07 11:00 | MEVA on AWS, no account (below) |
 
 ```bash
-# MEVA: about 120 MB per clip
+# MEVA (Git Bash / macOS / Linux shell): about 120 MB per clip
 for f in 11-00-00.11-05-00.hospital.G436 11-00-01.11-05-01.bus.G505 11-00-01.11-05-01.bus.G506 \
          11-00-01.11-05-01.school.G328 11-00-04.11-05-04.hospital.G341 11-00-05.11-05-05.school.G424 \
          11-00-06.11-05-05.school.G336 11-00-06.11-05-06.bus.G340 11-00-07.11-05-07.school.G339; do
-  curl -L -o data/meva/2018-03-07.$f.r13.avi \
+  curl -L --create-dirs -o data/meva/2018-03-07.$f.r13.avi \
     https://mevadata-public-01.s3.amazonaws.com/drops-123-r13/2018-03-07/11/2018-03-07.$f.r13.avi
 done
 ```
