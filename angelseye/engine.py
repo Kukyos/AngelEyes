@@ -118,7 +118,7 @@ class FramePusher:
     """Sends the newest annotated frame to the hub's live view on its own thread."""
 
     def __init__(self, url):
-        self.url, self.img, self.people, self.removed = url, None, [], False
+        self.url, self.img, self.people, self.removed, self.reset = url, None, [], False, False
         self.ev = threading.Event()
         threading.Thread(target=self._run, daemon=True).start()
 
@@ -134,7 +134,8 @@ class FramePusher:
             try:
                 req = urllib.request.Request(self.url, data=jpg.tobytes(), method="POST", headers={
                     "Content-Type": "image/jpeg", "X-People": json.dumps(self.people)})
-                urllib.request.urlopen(req, timeout=2).close()
+                with urllib.request.urlopen(req, timeout=2) as r:
+                    self.reset = self.reset or bool(json.loads(r.read() or b"{}").get("reset"))
             except urllib.error.HTTPError as err:
                 self.removed = err.code == 410  # Remove was pressed on the page: this engine stops
                 time.sleep(1)
@@ -459,6 +460,13 @@ class Engine:
                         kf.append(p)
                         ev["kf_t"] = t
                 if self.describer:
+                    if self.pusher and self.pusher.reset:  # Refresh on the page: forget who was seen, re-learn from now
+                        self.pusher.reset = False
+                        for cid in list(self.activity):
+                            self.end_activity(cid, t)
+                        for tr in self.tracks.values():
+                            tr.caption = ""
+                        self.present.clear(); self.missing.clear(); self.subject.clear()
                     self.describe_step(t, frame, plain, img, active)
 
                 full.write(img)

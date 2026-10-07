@@ -370,7 +370,20 @@ async def live_push(name: str, request: Request, session: str = ""):
         people = json.loads(request.headers.get("x-people") or "[]")
     except ValueError:
         people = []
+    if name in resets:  # Refresh was pressed: the engine forgets who it has seen; drop the stale tiles now
+        resets.discard(name)
+        live[name] = (time.time(), body, session[:100], [])
+        return {"ok": True, "reset": True}
     live[name] = (time.time(), body, session[:100], people)
+    return {"ok": True}
+
+
+@app.post("/api/live/{name}/reset")
+def live_reset(name: str):
+    """Refresh on the Camera page: the engine ends current activities and re-learns who is in view."""
+    if name not in live:
+        raise HTTPException(404, "no such live camera")
+    resets.add(name)
     return {"ok": True}
 
 
@@ -403,6 +416,7 @@ async def live_stream(name: str, request: Request):
 # back (loopback), so unblurred faces never leave. The engine's annotated, blurred output appears under /api/live.
 ingest: dict[str, tuple[float, bytes, str]] = {}
 removed: set[str] = set()  # camera names whose engine must stop (Remove), until started again
+resets: set[str] = set()   # camera names whose engine should forget who it has seen (Refresh on the page)
 engines: dict[str, dict] = {}  # camera name -> {"proc": Popen, "url": IP camera URL or None for a browser webcam}
 NAME_RE = r"[\w.-]{1,64}"
 

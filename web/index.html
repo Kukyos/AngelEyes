@@ -246,7 +246,7 @@ table.chk tr.unk td { color: var(--dim); }
     <div class="rules"><div class="head" style="padding-left:0;padding-right:0"><span>Ask about this camera</span></div>
       <form id="camAskForm"><input id="camAsk" maxlength="300" placeholder="is anyone holding a phone?" aria-label="Question about the live camera"><button>Ask</button></form>
       <div class="ans" id="camAns"></div></div>
-    <div style="display:flex;flex-direction:column;min-height:0"><div class="head"><span>Log</span></div><div class="list" id="camLog"></div></div>
+    <div style="display:flex;flex-direction:column;min-height:0"><div class="head"><span>Log</span><button id="camClear" title="Clear the log and the people tiles; the engine re-learns who is in view">Refresh</button></div><div class="list" id="camLog"></div></div>
   </div>
 </main>
 
@@ -648,7 +648,7 @@ for (const w in TABS) $(TABS[w]).onclick = () => tab(w);
 
 // ---------------- live camera ----------------
 // The log only ever grows at the top; rows are created once and updated in place.
-let camName = null, camSession = null, camEvents = {}, camRows = {}, camMiss = 0;
+let camName = null, camSession = null, camEvents = {}, camRows = {}, camMiss = 0, camHidden = new Set();
 const inSession = (e) => camSession && e.id.startsWith(camSession + "-");
 const camT = (iso) => iso.slice(11, 19);
 function pickCam(name) {
@@ -711,6 +711,7 @@ function camText(e) {
   return e.type === "rule" ? `Rule: ${e.evidence.series.rule_text}` : NAMES[e.type];
 }
 function camUpsert(e, animate) {
+  if (camHidden.has(e.id)) return;  // cleared by Refresh: later updates of the same event stay cleared
   camEvents[e.id] = e;
   let row = camRows[e.id];
   if (!row) {
@@ -728,6 +729,11 @@ function onCamEvent(e) {
   if (fresh && isAlert(e)) alarm(e);
   return true;
 }
+$("#camClear").onclick = () => {
+  for (const id in camEvents) camHidden.add(id);
+  camEvents = {}; camRows = {}; $("#camLog").replaceChildren(); renderNow([]);
+  if (camName) fetch(`/api/live/${encodeURIComponent(camName)}/reset`, { method: "POST" }).catch(() => {});
+};
 function renderNow(people) {
   // one tile per person in view, sent by the engine with each frame; keyed by subject so a tracker ID switch keeps the tile
   const box = $("#nowList");
