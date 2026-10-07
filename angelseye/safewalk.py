@@ -1,227 +1,134 @@
-"""SafeWalk routing engine: A* on OSMnx graph with dynamic edge costs.
+"""SafeWalk routing: shortest path on the street graph with costs from the cameras.
 
-Cost = length * (1 + deserted + dark + incident)
+Cost of a street = length * (1 + deserted + dark + incident), each 0..1:
+- deserted: people the camera on that street sees (few = 1)
+- dark: frame brightness on that camera (dim = 1)
+- incident: an alert within incident_radius_m, fading over incident_decay_h
+A street with no camera, or a camera with no data, gets unknown_penalty for deserted and dark:
+unwatched is never "safe". Thresholds: config.yaml `safewalk`.
 
-- deserted: 0-1 based on rolling people count (0 = busy, 1 = deserted)
-- dark: 0-1 based on frame brightness (0 = bright, 1 = dark)
-- incident: 0-1 based on recent events near edge (0 = none, 1 = active alert)
-- unknown penalty: edges with no camera get a fixed penalty (never "safe")
+The graph is OpenStreetMap's walk network around the MEVA site (data/street_graph.json,
+exported once from OSMnx), so routing needs only the standard library.
 """
 
-import pickle
 import heapq
+import json
 import math
-from pathlib import Path
-from typing import Optional
+from datetime import datetime
 
-from angelseye import ROOT
+from angelseye import ROOT, load_config
 
-GRAPH_PATH = ROOT / "data" / "street_graph.pkl"
-CAMERAS_PATH = ROOT / "data" / "cameras.json"
+ALERTS_SKIP = ("loitering", "activity")  # watch-level events, not incidents
+
+
+def haversine(a, b):
+    p1, p2 = math.radians(a[0]), math.radians(b[0])
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(b[1] - a[1]) / 2) ** 2
+    return 2 * 6371000.0 * math.asin(math.sqrt(h))
 
 
 class SafeWalk:
-    def __init__(self, counts: dict = None, brightness: dict = None, events: list = None):
-        """
-        Args:
-            counts: {camera_id: {"count": int, "age_s": float}}
-            brightness: {camera_id: {"brightness": float, "age_s": float}}
-            events: list of event dicts with "camera", "geo", "type", "t_start"
-        """
-        with open(GRAPH_PATH, "rb") as f:
-            self.G = pickle.load(f)
-
-        import json
-        with open(CAMERAS_PATH) as f:
-            cams = json.load(f)["cameras"]
-
-        # camera_id -> (edge_u, edge_v, edge_key)
-        self.cam_to_edge = {}
+    def __init__(self, counts=None, brightness=None, events=None, now=None, cfg=None):
+        """counts / brightness: {camera: number}; events: hub event dicts; now: datetime the incidents age against."""
+        g = json.loads((ROOT / "data/street_graph.json").read_text())
+        self.nodes, self.edges = g["nodes"], g["edges"]
+        self.c = (cfg or load_config())["safewalk"]
+        cams = json.loads((ROOT / "data/cameras.json").read_text())["cameras"]
+        self.edge_cam = {}
         for c in cams:
             if c.get("edge_u") is not None:
-                self.cam_to_edge[c["id"]] = (c["edge_u"], c["edge_v"], c["edge_key"])
-
-        # Build edge -> camera mapping
-        self.edge_to_cam = {}
-        for cam_id, (u, v, k) in self.cam_to_edge.items():
-            self.edge_to_cam[(u, v, k)] = cam_id
-            self.edge_to_cam[(v, u, k)] = cam_id  # bidirectional
-
-        self.counts = counts or {}
-        self.brightness = brightness or {}
-        self.events = events or []
-
-        # Config
-        self.deserted_threshold = 2.0  # count <= 2 = deserted
-        self.bright_threshold = 80.0   # brightness <= 80 = dark
-        self.incident_radius_m = 100.0
-        self.incident_decay_hours = 2.0
-        self.unknown_penalty = 0.5
-
-    def _edge_deserted(self, u, v, k) -> float:
-        """0.0 = busy, 1.0 = deserted"""
-        cam = self.edge_to_cam.get((u, v, k))
-        if not cam:
-            return self.unknown_penalty
-        data = self.counts.get(cam)
-        if not data:
-            return self.unknown_penalty
-        count = data["count"]
-        if count <= self.deserted_threshold:
-            return 1.0
-        # Linear: 2 -> 1.0, 10+ -> 0.0
-        return max(0.0, 1.0 - (count - 2) / 8.0)
-
-    def _edge_dark(self, u, v, k) -> float:
-        """0.0 = bright, 1.0 = dark"""
-        cam = self.edge_to_cam.get((u, v, k))
-        if not cam:
-            return self.unknown_penalty
-        data = self.brightness.get(cam)
-        if not data:
-            return self.unknown_penalty
-        bright = data["brightness"]
-        if bright <= self.bright_threshold:
-            return 1.0
-        # Linear: 80 -> 1.0, 200+ -> 0.0
-        return max(0.0, 1.0 - (bright - 80) / 120.0)
-
-    def _edge_incident(self, u, v, k) -> float:
-        """0.0 = no recent incident, 1.0 = active alert nearby"""
-        if not self.events:
-            return 0.0
-
-        # Get edge midpoint
-        mid_u = self.G.nodes[u]
-        mid_v = self.G.nodes[v]
-        mid_lat = (mid_u["y"] + mid_v["y"]) / 2
-        mid_lon = (mid_u["x"] + mid_v["x"]) / 2
-
-        import time
-        now = time.time()
-        max_score = 0.0
-
-        for ev in self.events:
-            if ev.get("type") in ("loitering", "activity"):
-                continue  # not an incident
-            geo = ev.get("geo")
-            if not geo:
+                for u, v in ((c["edge_u"], c["edge_v"]), (c["edge_v"], c["edge_u"])):
+                    self.edge_cam[(str(u), str(v), c["edge_key"])] = c["id"]
+        self.counts, self.brightness = counts or {}, brightness or {}
+        now = now or datetime.now()
+        self.incidents = []  # (lat, lon, weight 0..1)
+        for e in events or []:
+            if e.get("type") in ALERTS_SKIP or not e.get("geo"):
                 continue
-            ev_lat, ev_lon = geo[0], geo[1]
-            # Haversine distance
-            d = self._haversine(mid_lat, mid_lon, ev_lat, ev_lon)
-            if d <= self.incident_radius_m:
-                # Decay by time
-                try:
-                    from datetime import datetime
-                    ev_time = datetime.fromisoformat(ev["t_start"]).timestamp()
-                    age_h = (now - ev_time) / 3600
-                    score = max(0.0, 1.0 - age_h / self.incident_decay_hours)
-                    max_score = max(max_score, score)
-                except Exception:
-                    pass
-        return max_score
+            age_h = (now - datetime.fromisoformat(e["t_start"])).total_seconds() / 3600
+            if 0 <= age_h < self.c["incident_decay_h"]:
+                self.incidents.append((e["geo"][0], e["geo"][1], 1 - age_h / self.c["incident_decay_h"]))
+        for e in self.edges:
+            e["cost"], e["why"] = self._cost(e)
+        self.adj = {}
+        for i, e in enumerate(self.edges):
+            self.adj.setdefault(e["u"], []).append(i)
 
-    @staticmethod
-    def _haversine(lat1, lon1, lat2, lon2) -> float:
-        R = 6371000.0
-        phi1, phi2 = math.radians(lat1), math.radians(lat2)
-        dphi = math.radians(lat2 - lat1)
-        dlambda = math.radians(lon2 - lon1)
-        a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-        return 2 * R * math.asin(math.sqrt(a))
+    def _cost(self, e):
+        c = self.c
+        cam = self.edge_cam.get((e["u"], e["v"], e["k"]))
+        n, b = self.counts.get(cam), self.brightness.get(cam)
+        deserted = c["unknown_penalty"] if n is None else max(0.0, min(1.0, 1 - (n - c["deserted_count"]) / c["busy_span"]))
+        dark = c["unknown_penalty"] if b is None else max(0.0, min(1.0, 1 - (b - c["dark_brightness"]) / c["bright_span"]))
+        mid = e["coords"][len(e["coords"]) // 2]
+        incident = max([w for la, lo, w in self.incidents if haversine(mid, (la, lo)) <= c["incident_radius_m"]], default=0.0)
+        why = {"camera": cam, "people": n, "brightness": b, "deserted": round(deserted, 2), "dark": round(dark, 2),
+               "incident": round(incident, 2)}
+        return e["length"] * (1 + deserted + dark + incident), why
 
-    def _edge_cost(self, u, v, k) -> float:
-        """Total cost = length * (1 + deserted + dark + incident)"""
-        data = self.G.get_edge_data(u, v, k)
-        length = data.get("length", 1.0)
+    def nearest(self, lat, lon):
+        return min(self.nodes, key=lambda n: haversine(self.nodes[n], (lat, lon)))
 
-        deserted = self._edge_deserted(u, v, k)
-        dark = self._edge_dark(u, v, k)
-        incident = self._edge_incident(u, v, k)
+    def path(self, src, dst, weight):
+        """Dijkstra; returns the list of edge indexes from src to dst ([] if unreachable)."""
+        best, prev, q = {src: 0.0}, {}, [(0.0, src)]
+        while q:
+            d, n = heapq.heappop(q)
+            if n == dst:
+                break
+            if d > best[n]:
+                continue
+            for i in self.adj.get(n, []):
+                m, nd = self.edges[i]["v"], d + self.edges[i][weight]
+                if nd < best.get(m, math.inf):
+                    best[m], prev[m] = nd, i
+                    heapq.heappush(q, (nd, m))
+        out = []
+        while dst in prev:
+            out.append(prev[dst])
+            dst = self.edges[prev[dst]]["u"]
+        return out[::-1]
 
-        multiplier = 1.0 + deserted + dark + incident
-        return length * multiplier
+    def line(self, idx):
+        pts = []
+        for i in idx:
+            pts += self.edges[i]["coords"][1 if pts else 0:]
+        return pts
 
-    def _heuristic(self, u, v) -> float:
-        """Straight-line distance heuristic for A*."""
-        n1 = self.G.nodes[u]
-        n2 = self.G.nodes[v]
-        return self._haversine(n1["y"], n1["x"], n2["y"], n2["x"])
+    def route(self, o_lat, o_lon, d_lat, d_lon):
+        src, dst = self.nearest(o_lat, o_lon), self.nearest(d_lat, d_lon)
+        out = {}
+        for name, w in (("fastest", "length"), ("safest", "cost")):
+            idx = self.path(src, dst, w)
+            out[name] = {"coords": self.line(idx), "length_m": round(sum(self.edges[i]["length"] for i in idx), 1),
+                         "cameras": sorted({self.edges[i]["why"]["camera"] for i in idx} - {None})}
+        return out
 
-    def route(self, origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float,
-              prefer_safe: bool = True):
-        """
-        Find route from origin to destination.
-        Returns: (fastest_path, safest_path) as lists of (lat, lon) coords.
-        """
-        # Find nearest nodes
-        import osmnx as ox
-        orig_node = ox.distance.nearest_nodes(self.G, origin_lon, origin_lat)
-        dest_node = ox.distance.nearest_nodes(self.G, dest_lon, dest_lat)
-
-        # Fastest path (length only)
-        fastest = nx.astar_path(self.G, orig_node, dest_node, heuristic=self._heuristic, weight="length")
-
-        if not prefer_safe:
-            return self._path_to_coords(fastest), None
-
-        # Safest path (dynamic cost)
-        def safe_weight(u, v, d):
-            # MultiDiGraph: d is dict of key->edge_data
-            min_cost = float("inf")
-            for k, edata in d.items():
-                cost = self._edge_cost(u, v, k)
-                if cost < min_cost:
-                    min_cost = cost
-            return min_cost
-
-        try:
-            safest = nx.astar_path(self.G, orig_node, dest_node, heuristic=self._heuristic, weight=safe_weight)
-        except nx.NetworkXNoPath:
-            safest = fastest
-
-        return self._path_to_coords(fastest), self._path_to_coords(safest)
-
-    def _path_to_coords(self, path) -> list:
-        """Convert node path to [(lat, lon), ...]"""
-        return [(self.G.nodes[n]["y"], self.G.nodes[n]["x"]) for n in path]
-
-    def heatmap(self) -> dict:
-        """Return per-edge heatmap data for visualization."""
-        out = {"deserted": [], "dark": [], "incident": [], "total": []}
-        for u, v, k in self.G.edges(keys=True):
-            data = self.G.get_edge_data(u, v, k)
-            mid_u = self.G.nodes[u]
-            mid_v = self.G.nodes[v]
-            mid = [(mid_u["y"] + mid_v["y"]) / 2, (mid_u["x"] + mid_v["x"]) / 2]
-
-            deserted = self._edge_deserted(u, v, k)
-            dark = self._edge_dark(u, v, k)
-            incident = self._edge_incident(u, v, k)
-            total = 1.0 + deserted + dark + incident
-
-            out["deserted"].append({"coord": mid, "value": deserted})
-            out["dark"].append({"coord": mid, "value": dark})
-            out["incident"].append({"coord": mid, "value": incident})
-            out["total"].append({"coord": mid, "value": total})
+    def heatmap(self):
+        """Every street once (one direction) with its cost multiplier and the reasons."""
+        seen, out = set(), []
+        for e in self.edges:
+            key = (min(e["u"], e["v"]), max(e["u"], e["v"]), e["k"])
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append({"coords": e["coords"], "mult": round(e["cost"] / e["length"], 2) if e["length"] else 1.0,
+                        "name": e["name"], **e["why"]})
         return out
 
 
-# NetworkX import at module level for weight function
-import networkx as nx
-
-
-def demo():
-    """Quick test with Muscatatuck center points."""
-    sw = SafeWalk()
-    # Hospital G436 to School G328
-    fast, safe = sw.route(39.0486, -85.5290, 39.0505, -85.5285)
-    print(f"Fastest: {len(fast)} points")
-    print(f"Safest: {len(safe) if safe else 0} points")
-    hm = sw.heatmap()
-    print(f"Heatmap edges: {len(hm['total'])}")
-
-
 if __name__ == "__main__":
-    demo()
+    # Self-check: an incident on the fastest route must push the safest route off it.
+    sw = SafeWalk()
+    o, d = (39.0486, -85.5290), (39.0505, -85.5285)
+    r = sw.route(*o, *d)
+    assert r["fastest"]["coords"] and r["fastest"]["length_m"] <= r["safest"]["length_m"], r
+    mid = r["fastest"]["coords"][len(r["fastest"]["coords"]) // 2]
+    ev = {"type": "fall", "geo": mid, "t_start": "2018-03-07T11:00:00"}
+    r2 = SafeWalk(events=[ev], now=datetime(2018, 3, 7, 11, 5)).route(*o, *d)
+    assert r2["safest"]["coords"] != r["fastest"]["coords"], "incident did not move the safe route"
+    assert r2["safest"]["length_m"] >= r2["fastest"]["length_m"]
+    old = SafeWalk(events=[ev], now=datetime(2018, 3, 8)).incidents
+    assert not old, "incident should have faded"
+    print("safewalk ok:", r2["fastest"]["length_m"], "m fastest,", r2["safest"]["length_m"], "m safest with incident;",
+          len(sw.heatmap()), "streets")

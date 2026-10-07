@@ -38,7 +38,7 @@ everything.
 | Ultralytics YOLOE (open-vocabulary detection) + Apple MobileCLIP text encoder | AGPL-3.0; Apple MobileCLIP licence | Objects named in watch rules (D20) |
 | MediaPipe Hands | Apache-2.0 | SOS gesture landmarks |
 | OpenCLIP | MIT | Amber appearance search |
-| OSMnx + OpenStreetMap | MIT; ODbL | SafeWalk street graph |
+| OSMnx + OpenStreetMap | MIT; ODbL | SafeWalk street graph (exported once to `data/street_graph.json`; the app needs neither OSMnx nor networkx) |
 | [MEVA](https://mevadata.org/) | CC-BY-4.0 | Multi-camera footage |
 | [TfL JamCams](https://api.tfl.gov.uk/Place/Type/JamCam) | TfL open data terms | Live crowd levels |
 | Gemini, Groq, Airouter APIs | Provider terms | Event confirmation, questions, fallback |
@@ -59,4 +59,8 @@ everything.
 | FastAPI, Uvicorn, python-multipart, PyYAML, lap | MIT / BSD / Apache | Hub, uploads, config, tracker assignment |
 | ngrok (host-side tunnel, free tier; user's own install, not a repo dependency) | ngrok terms | Gives teammates an https link to the host's hub so they can send their webcam and watch the result |
 | FFmpeg (system install) | LGPL/GPL | H.264 output browsers can play |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | Unlicense | Resolves a YouTube livestream to its HLS address when Analyse is pressed (World tab); engine side only |
+| Public YouTube livestreams in `data/streams.json` (4 picked by the user, 8 from Volve Vision's city/square/traffic lists) | YouTube terms; each channel's own. Shown through the standard youtube-nocookie embed | Extra CCTV on the World tab; analysed only on demand |
+| [Volve Vision](https://volvevision.com/en) camera pages | Site terms; read by hand, not scraped by the app | Camera coordinates for `data/streams.json`, and the look of the World tab (map + live tiles) |
+| OpenStreetMap Nominatim (one lookup, by hand) | ODbL; Nominatim usage policy | Island-level position of the Windmill Bar cam (not on Volve) |
 | Esri World Imagery tiles | Esri terms; attribution "Esri, Maxar, Earthstar Geographics" shown on the map | Map imagery when the Cesium token is not valid for the page's address |

@@ -1,0 +1,17 @@
+{
+  "note": "Public YouTube livestreams shown as extra CCTV on the World tab. Not calibrated: pins only, no view cones, no metres. Coordinates from each camera's Volve Vision page (volvevision.com) except windmill-stjohn (Nominatim, island level). The first four were picked by the user; the rest from Volve's city/square/traffic lists, all checked live on 2026-10-07.",
+  "streams": [
+    {"id": "leavenworth", "name": "Downtown Leavenworth", "place": "Leavenworth, Washington, USA", "lat": 47.5953993, "lon": -120.6656516, "url": "https://www.youtube.com/watch?v=XjhxRZEm638", "credit": "Visit Leavenworth"},
+    {"id": "windmill-stjohn", "name": "Windmill Bar stage", "place": "St. John, US Virgin Islands", "lat": 18.3356013, "lon": -64.7550406, "url": "https://www.youtube.com/watch?v=d-drfinzIWU", "credit": "The Windmill Bar"},
+    {"id": "tower-of-peace", "name": "Tower of Peace", "place": "Mount Abu, Rajasthan, India", "lat": 24.5982899, "lon": 72.7061703, "url": "https://www.youtube.com/watch?v=JWo4Tte6A4c", "credit": "Rajyogini Dadi Gulzar"},
+    {"id": "charme-coullons", "name": "Charme camping", "place": "Coullons, France", "lat": 47.615551, "lon": 2.525221, "url": "https://www.youtube.com/watch?v=pOL0u6K4wLI", "credit": "WebCam NL"},
+    {"id": "times-square", "name": "Times Square", "place": "New York, USA", "lat": 40.7590636, "lon": -73.9851683, "url": "https://www.youtube.com/watch?v=VGnFLdQW39A", "credit": "via Volve Vision"},
+    {"id": "sukhumvit", "name": "Sukhumvit Soi 19", "place": "Bangkok, Thailand", "lat": 13.7379774, "lon": 100.5576724, "url": "https://www.youtube.com/watch?v=Q71sLS8h9a4", "credit": "via Volve Vision"},
+    {"id": "brasov-square", "name": "Piața Sfatului", "place": "Brașov, Romania", "lat": 45.6425037, "lon": 25.5874727, "url": "https://www.youtube.com/watch?v=HmBsPGMdxwY", "credit": "via Volve Vision"},
+    {"id": "santa-rosa", "name": "Old Courthouse Square", "place": "Santa Rosa, California, USA", "lat": 38.4394159, "lon": -122.71602, "url": "https://www.youtube.com/watch?v=KES0RUIXg8s", "credit": "via Volve Vision"},
+    {"id": "jackson-square", "name": "Town Square", "place": "Jackson, Wyoming, USA", "lat": 43.4794619, "lon": -110.764796, "url": "https://www.youtube.com/watch?v=1EiC9bvVGnk", "credit": "via Volve Vision"},
+    {"id": "davao-soliman", "name": "Soliman Street", "place": "Agdao, Davao City, Philippines", "lat": 7.0675389, "lon": 125.6175277, "url": "https://www.youtube.com/watch?v=8ALC939509U", "credit": "via Volve Vision"},
+    {"id": "concepcion", "name": "Concepción Centro", "place": "Concepción, Chile", "lat": -36.8214444, "lon": -73.0468333, "url": "https://www.youtube.com/watch?v=RhdmP5017VM", "credit": "via Volve Vision"},
+    {"id": "danang-school", "name": "Nguyễn Huệ school gate", "place": "Da Nang, Vietnam", "lat": 16.0747901, "lon": 108.2159621, "url": "https://www.youtube.com/watch?v=sJvEFrG0wq0", "credit": "via Volve Vision"}
+  ]
+}

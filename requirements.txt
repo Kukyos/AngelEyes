@@ -7,3 +7,4 @@ torch
 torchvision
 ultralytics
 lap
+yt-dlp     # resolves a public livestream (World tab) to the HLS address the engine reads

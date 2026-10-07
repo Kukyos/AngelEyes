@@ -118,6 +118,9 @@ something only verified in theory.
 | 4.18 | Globe: two route polylines (fastest=grey, safest=green), heatmap raster (deserted/dark), incident pins | Jerem | ☑ SafeWalk tab with origin/dest picker, dual routes, heatmap legend |
 | 4.19 | UI: route picker (origin/dest click on globe), toggle fastest/safest, legend | Jerem | ☑ Done in 4.18 (origin/dest click, mode toggle, distance legend) |
 | 4.20 | Demo polish: ensure hub-down error state, zero console errors, responsive on phone | Jerem | ☐ |
+| 4.21 | Merge `feat/safewalk` into `mvp3`; routing without networkx/OSMnx (graph → `street_graph.json`, Dijkstra), thresholds to `config.yaml` `safewalk`, `/api/safewalk` replays the site clock (people from tracks, incidents aged against it) | solo | ☑ self-check `python -m angelseye.safewalk`; at 11:03:20 the fall near G341 moves the safe route: 505 m → 532 m |
+| 4.22 | SafeWalk tab finished: streets shaded by cost, dashed fastest / solid safest, alert rings, reasons per camera, follows the site clock; black and white (D18) | solo | ☑ seen in Chrome |
+| 4.23 | World tab: 12 public livestreams (`data/streams.json`) as embeds + world map pins; Analyse starts an engine on one (yt-dlp → HLS, `--no-describe`), Captions adds the vision model; analysed streams also on Camera | solo | ◐ all 12 open in OpenCV at 720p; HLS pacing measured (332 vs 141 frames in 25 s, max gap 1.0 vs 4.5 s); detection quality on these scenes not measured |
 
 ## Stage 5 — Finish
 

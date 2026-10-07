@@ -44,8 +44,6 @@ header .sp { flex: 1; }
 
 aside { display: grid; grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); border-left: 1px solid var(--line); min-height: 0; }
 #globe { position: relative; min-height: 0; background: #000; }
-#globe .cesium-viewer-bottom, #globe .cesium-widget-credits { display: none !important; }
-#globeNote { position: absolute; left: 10px; bottom: 8px; z-index: 2; font: 10px var(--mono); color: var(--faint); pointer-events: none; }
 #home { position: absolute; right: 10px; top: 8px; z-index: 2; font-size: 11px; }
 .head { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 16px 8px;
   font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
@@ -136,6 +134,36 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 .log { display: grid; grid-template-columns: 64px 36px 1fr; gap: 8px; padding: 6px 16px; font-size: 13px; animation: enter .4s var(--ease); }
 .log .tm, .log .p { font: 11px var(--mono); color: var(--faint); padding-top: 2px; }
 .log.alert { font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.map { position: relative; min-height: 0; background: #000; }
+.map .cesium-viewer-bottom, .map .cesium-widget-credits { display: none !important; }
+.map .note { position: absolute; left: 10px; bottom: 8px; z-index: 2; font: 10px var(--mono); color: var(--faint); pointer-events: none; }
+#safe { position: absolute; inset: 44px 0 48px 0; display: none; grid-template-columns: 340px minmax(0, 1fr); }
+#safe.show, #world.show { display: grid; }
+#safeSide { border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+.panel { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; font-size: 12px; color: var(--dim); }
+.panel b { color: var(--text); font-weight: 500; }
+.rt { border: 1px solid var(--line); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.rt .k { display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--text); }
+.rt .v { font-size: 17px; color: var(--text); }
+.rt .m { font: 11px var(--mono); color: var(--faint); }
+.rt i { display: inline-block; width: 24px; border-top: 4px solid var(--text); }
+.rt i.dash { border-top: 2px dashed var(--dim); }
+.why { font: 11px var(--mono); color: var(--dim); display: grid; grid-template-columns: 48px 1fr; gap: 2px 8px; }
+#world { position: absolute; inset: 44px 0 0 0; display: none; grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr); }
+#wGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2px; padding: 2px; overflow-y: auto; align-content: start; min-height: 0; }
+.wt { position: relative; aspect-ratio: 16/9; background: #050505; outline: 1px solid var(--line); outline-offset: -1px; overflow: hidden; }
+.wt.sel { outline: 2px solid var(--text); outline-offset: -2px; }
+.wt iframe, .wt img { width: 100%; height: 100%; border: 0; display: block; object-fit: cover; }
+.wt iframe { filter: grayscale(1); pointer-events: none; }
+.wt .st { position: absolute; left: 8px; top: 6px; font: 11px var(--mono); background: #000a; padding: 2px 6px; color: var(--text); }
+.wt .bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; align-items: baseline; padding: 16px 8px 6px;
+  font: 11px var(--mono); color: var(--dim); background: linear-gradient(#0000, #000d); cursor: pointer; }
+.wt .bar b { color: var(--text); font-weight: 500; white-space: nowrap; }
+.wt .bar .pl { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wt .bar button { font: 11px var(--mono); padding: 2px 7px; border: 1px solid var(--faint); color: var(--text); }
+.wt .bar button.on { background: var(--text); color: #000; border-color: var(--text); }
+#worldSide { display: grid; grid-template-rows: minmax(0, 1fr) auto; border-left: 1px solid var(--line); min-height: 0; }
+#wMsg { padding: 10px 16px 14px; font-size: 12px; color: var(--dim); border-top: 1px solid var(--line); }
 #down { position: absolute; inset: 0; display: none; place-items: center; z-index: 30; background: #000; color: var(--dim);
   text-align: center; font: 13px var(--mono); line-height: 2; }
 </style>
@@ -146,6 +174,7 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
   <button id="tabSite">Site</button>
   <button id="tabClips">Clips</button>
   <button id="tabSafe">SafeWalk</button>
+  <button id="tabWorld">World</button>
   <span class="sp"></span>
   <span id="clock" class="num">--:--:--</span>
   <button id="play" title="Play / pause (space)"><svg viewBox="0 0 12 12"><path id="playIcon" d="M2 1h3v10H2zM7 1h3v10H7z"/></svg></button>
@@ -156,7 +185,7 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 <main id="site">
   <section id="grid"></section>
   <aside>
-    <div id="globe"><button id="home">Recenter</button><div id="globeNote"></div></div>
+    <div id="globe" class="map"><button id="home">Recenter</button><div class="note"></div></div>
     <div id="feed"><div class="head"><span>Events</span><span id="evCount" class="num"></span></div><div class="list" id="feedlist"></div></div>
   </aside>
 </main>
@@ -195,35 +224,25 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 </main>
 
 <main id="safe">
-  <div id="safeSide" style="display:grid;grid-template-rows:auto minmax(0,1fr);border-right:1px solid var(--line);min-width:280px">
-    <div class="head"><span>SafeWalk</span></div>
-    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;gap:8px">
-        <button id="safeOrigin" style="flex:1;padding:8px;background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:4px">Set Origin</button>
-        <button id="safeDest" style="flex:1;padding:8px;background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:4px">Set Destination</button>
-      </div>
-      <div id="safeMode" style="display:flex;gap:8px">
-        <button class="on" data-mode="fastest" style="flex:1;padding:8px;background:var(--text);color:#000;border:0;border-radius:4px">Fastest</button>
-        <button data-mode="safest" style="flex:1;padding:8px;background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:4px">Safest</button>
-        <button data-mode="both" style="flex:1;padding:8px;background:var(--hover);border:1px solid var(--line);color:var(--text);border-radius:4px">Both</button>
-      </div>
-      <div id="safeHeatmap" style="display:flex;gap:8px">
-        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)">
-          <input type="checkbox" id="hmDeserted" checked> Deserted
-        </label>
-        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)">
-          <input type="checkbox" id="hmDark"> Dark
-        </label>
-        <label style="flex:1;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)">
-          <input type="checkbox" id="hmIncident"> Incidents
-        </label>
-      </div>
-      <button id="safeGo" style="padding:10px;background:var(--text);color:#000;border:0;border-radius:4px;font-weight:600">Calculate Route</button>
-      <div id="safeResult" style="font:11px var(--mono);color:var(--dim);min-height:40px"></div>
+  <div id="safeSide">
+    <div class="head"><span>SafeWalk</span><button id="swReset" style="font-size:11px;padding:0">Clear</button></div>
+    <div class="panel">
+      <div id="swHint">Click the map twice: where you start, then where you're going.</div>
+      <div id="swOut"></div>
+      <div>Brighter streets cost more: few people in view, an alert nearby, or no camera at all
+        (an unwatched street never counts as safe). Costs follow the site clock; brightness comes from live cameras only.</div>
     </div>
-    <div class="list" style="max-height:200px;overflow:auto" id="safeLegend"></div>
   </div>
-  <div id="safeGlobe" style="position:relative;min-height:0;background:#000"></div>
+  <div id="safeMap" class="map"><div class="note"></div></div>
+</main>
+
+<main id="world">
+  <section id="wGrid"></section>
+  <div id="worldSide">
+    <div id="worldMap" class="map"><div class="note"></div></div>
+    <div id="wMsg">Public livestreams, shown as they are. Analyse runs tracking and pose on one (faces blurred,
+      no vision-model credit); Captions adds the vision model. Analysed streams also appear on Camera.</div>
+  </div>
 </main>
 
 <div id="toast"></div>
@@ -238,7 +257,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const hms = (d) => d.toTimeString().slice(0, 8);
 async function j(url, opt) { const r = await fetch(url, opt); if (!r.ok) throw new Error(`${url}: ${r.status}`); return r.json(); }
 
-let tiles = {}, events = [], siteStart = 0, siteEnd = 1, T = 0, playing = true, speed = 1;
+let siteReg = { cameras: [] }, tiles = {}, events = [], siteStart = 0, siteEnd = 1, T = 0, playing = true, speed = 1;
 let shown = new Set(), focusCam = null, viewer = null, dotEnts = {}, pinEnts = {}, coneEnts = {}, trackData = {}, audio = null;
 const W = () => Cesium.Color.WHITE;
 
@@ -256,7 +275,8 @@ async function boot() {
   events = evs.filter((e) => siteIds.has(e.camera)).map(withTimes);
   buildGrid(live);
   buildTimeline();
-  initGlobe(reg, cfg.cesium_token).catch((e) => ($("#globeNote").textContent = "map unavailable: " + e.message));
+  siteReg = reg;
+  initGlobe(reg, cfg.cesium_token).catch((e) => ($("#globe .note").textContent = "map unavailable: " + e.message));
   for (const c of live) j(`/api/tracks/${c.id}`).then((d) => (trackData[c.id] = d)).catch(() => {});
   connectWS(siteIds);
   initClips(siteIds, evs);
@@ -301,7 +321,7 @@ function tick(now) {
   $("#clock").textContent = siteStart ? hms(new Date(siteStart + T * 1000)) : "--:--:--";
   const p = (T / siteEnd * 100) + "%";
   $("#knob").style.left = p; $("#done").style.width = p;
-  if (now - lastSlow > 200) { lastSlow = now; reveal(); updateDots(); }
+  if (now - lastSlow > 200) { lastSlow = now; reveal(); updateDots(); if (swT !== null && Math.abs(T - swT) >= 2) refreshSafe(); }
   requestAnimationFrame(tick);
 }
 
@@ -405,24 +425,48 @@ function connectWS(siteIds) {
 }
 
 // ---------------- map ----------------
-async function initGlobe(reg, token) {
+// One look for every map: grayscale imagery on black. The ion token can be restricted to certain page
+// addresses, so it is checked once before relying on it (else Esri imagery, no terrain).
+let cesiumToken = null, ionCheck = null;
+async function makeViewer(container) {
+  ionCheck = ionCheck || (cesiumToken ? fetch(`https://api.cesium.com/v1/assets/1/endpoint?access_token=${cesiumToken}`)
+    .then((r) => r.ok).catch(() => false) : Promise.resolve(false));
+  const ionOk = await ionCheck;
   const opts = { animation: false, timeline: false, baseLayerPicker: false, geocoder: false, homeButton: false,
     sceneModePicker: false, navigationHelpButton: false, infoBox: false, selectionIndicator: false, fullscreenButton: false,
     skyBox: false, skyAtmosphere: false, contextOptions: { webgl: { alpha: false } } };
-  // An ion token can be restricted to certain page addresses; check before relying on it.
-  const ionOk = token && await fetch(`https://api.cesium.com/v1/assets/1/endpoint?access_token=${token}`).then((r) => r.ok).catch(() => false);
-  if (ionOk) { Cesium.Ion.defaultAccessToken = token; opts.terrain = Cesium.Terrain.fromWorldTerrain(); }
+  if (ionOk) { Cesium.Ion.defaultAccessToken = cesiumToken; opts.terrain = Cesium.Terrain.fromWorldTerrain(); }
   else opts.baseLayer = new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({
     url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", maximumLevel: 19 }));
-  viewer = new Cesium.Viewer("globe", opts);
-  const sc = viewer.scene;
+  const v = new Cesium.Viewer(container, opts), sc = v.scene;
   sc.backgroundColor = Cesium.Color.BLACK;
   for (const k of ["sun", "moon", "skyBox", "skyAtmosphere"]) if (sc[k]) sc[k].show = false;
   sc.fog.enabled = false;
   sc.globe.baseColor = Cesium.Color.BLACK; sc.globe.showGroundAtmosphere = false; sc.globe.enableLighting = false;
-  const base = viewer.imageryLayers.get(0);
+  const base = v.imageryLayers.get(0);
   if (base) { base.saturation = 0; base.brightness = 0.75; base.contrast = 1.15; }
-  $("#globeNote").textContent = "Imagery © Esri, Maxar" + (ionOk ? " · terrain Cesium ion" : "");
+  const note = document.querySelector(`#${container} .note`);
+  if (note) note.textContent = "Imagery © Esri, Maxar" + (ionOk ? " · terrain Cesium ion" : "");
+  return { viewer: v, ionOk };
+}
+const camPoint = (c, has = true) => ({ position: Cesium.Cartesian3.fromDegrees(c.lon, c.lat), properties: { kind: "cam", id: c.id },
+  point: { pixelSize: has ? 7 : 4, color: has ? W() : W().withAlpha(.4), outlineColor: Cesium.Color.BLACK, outlineWidth: 1,
+    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity },
+  label: { show: has, text: c.id, font: "10px monospace", pixelOffset: new Cesium.Cartesian2(0, -13), fillColor: W(),
+    showBackground: true, backgroundColor: Cesium.Color.BLACK.withAlpha(.55), backgroundPadding: new Cesium.Cartesian2(4, 2),
+    heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity } });
+function siteHome(v, reg, ionOk, d = 1.4) {
+  const lat = reg.cameras.reduce((a, c) => a + c.lat, 0) / reg.cameras.length;
+  const lon = reg.cameras.reduce((a, c) => a + c.lon, 0) / reg.cameras.length;
+  v.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat - 0.0028, ionOk ? 560 : 360),
+    orientation: { pitch: Cesium.Math.toRadians(-52) }, duration: d });
+}
+
+async function initGlobe(reg, token) {
+  cesiumToken = token;
+  const r = await makeViewer("globe"), ionOk = r.ionOk;
+  viewer = r.viewer;
+  const sc = viewer.scene;
 
   for (const c of reg.cameras) {
     const has = !!c.run;
@@ -431,18 +475,10 @@ async function initGlobe(reg, token) {
         material: W().withAlpha(has ? 0.12 : 0.04) } });
     if (has) viewer.entities.add({ polyline: { width: 1, clampToGround: true, material: W().withAlpha(0.45),
       positions: Cesium.Cartesian3.fromDegreesArray([...c.footprint, c.footprint[0]].flatMap(([la, lo]) => [lo, la])) } });
-    viewer.entities.add({ position: Cesium.Cartesian3.fromDegrees(c.lon, c.lat), properties: { kind: "cam", id: c.id },
-      point: { pixelSize: has ? 7 : 4, color: has ? W() : W().withAlpha(.4), outlineColor: Cesium.Color.BLACK, outlineWidth: 1,
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity },
-      label: { show: has, text: c.id, font: "10px monospace", pixelOffset: new Cesium.Cartesian2(0, -13), fillColor: W(),
-        showBackground: true, backgroundColor: Cesium.Color.BLACK.withAlpha(.55), backgroundPadding: new Cesium.Cartesian2(4, 2),
-        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity } });
+    viewer.entities.add(camPoint(c, has));
   }
   for (const e of events) addPin(e);
-  const lat = reg.cameras.reduce((a, c) => a + c.lat, 0) / reg.cameras.length;
-  const lon = reg.cameras.reduce((a, c) => a + c.lon, 0) / reg.cameras.length;
-  const home = (d = 1.4) => viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat - 0.0028, ionOk ? 560 : 360),
-    orientation: { pitch: Cesium.Math.toRadians(-52) }, duration: d });
+  const home = (d) => siteHome(viewer, reg, ionOk, d);
   home(0);
   $("#home").onclick = () => home();
   new Cesium.ScreenSpaceEventHandler(sc.canvas).setInputAction((m) => {
@@ -547,22 +583,19 @@ $("#drop").ondragover = (e) => { e.preventDefault(); $("#drop").classList.add("o
 $("#drop").ondragleave = () => $("#drop").classList.remove("over");
 $("#drop").ondrop = (e) => { e.preventDefault(); $("#drop").classList.remove("over"); if (e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]); };
 
+const TABS = { cam: "#tabCam", site: "#tabSite", clips: "#tabClips", safe: "#tabSafe", world: "#tabWorld" };
 function tab(which) {
-  const site = which === "site";
-  const safe = which === "safe";
-  for (const [b, w] of [["#tabCam", "cam"], ["#tabSite", "site"], ["#tabClips", "clips"], ["#tabSafe", "safe"]]) $(b).classList.toggle("on", which === w);
-  $("#site").style.display = site ? "grid" : "none"; document.querySelector("footer").style.display = site ? "flex" : "none";
-  $("#clips").classList.toggle("show", which === "clips");
-  $("#cam").classList.toggle("show", which === "cam");
-  $("#safe").classList.toggle("show", safe);
-  for (const x of ["#clock", "#play", "#spd"]) $(x).style.visibility = site ? "visible" : "hidden";
-  if (!site && !safe) { setPlaying(false); closeFocus(); } else setPlaying(true);
-  if (safe) initSafeWalk();
+  const site = which === "site", clocked = site || which === "safe";  // SafeWalk replays the site clock too
+  for (const w in TABS) $(TABS[w]).classList.toggle("on", which === w);
+  $("#site").style.display = site ? "grid" : "none"; document.querySelector("footer").style.display = clocked ? "flex" : "none";
+  for (const w of ["clips", "cam", "safe", "world"]) $("#" + w).classList.toggle("show", which === w);
+  for (const x of ["#clock", "#play", "#spd"]) $(x).style.visibility = clocked ? "visible" : "hidden";
+  if (!site) closeFocus();
+  setPlaying(clocked);
+  if (which === "safe") initSafeWalk().catch((e) => ($("#swOut").textContent = "map unavailable: " + e.message));
+  if (which === "world") initWorld().catch((e) => ($("#wMsg").textContent = "map unavailable: " + e.message));
 }
-$("#tabCam").onclick = () => tab("cam");
-$("#tabSite").onclick = () => tab("site");
-$("#tabClips").onclick = () => tab("clips");
-$("#tabSafe").onclick = () => tab("safe");
+for (const w in TABS) $(TABS[w]).onclick = () => tab(w);
 
 // ---------------- live camera ----------------
 // The log only ever grows at the top; rows are created once and updated in place.
@@ -685,188 +718,165 @@ $("#ruleForm").onsubmit = async (ev) => {
 };
 loadRules();
 
-// ---------------- SafeWalk ----------------
-let safeViewer = null, safeOrigin = null, safeDest = null, safeMode = "both";
-let safeHeatLayers = {deserted: null, dark: null, incident: null};
-
+// ---------------- SafeWalk: fastest vs safest walk on the site streets, costs from the cameras at the site clock ----------------
+let sw = null, swPts = [], swT = null, swBusy = false, swStreetEnts = [], swEnts = [], swKey = "";
+const isoLocal = (d) => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+const swLine = (pts) => Cesium.Cartesian3.fromDegreesArray(pts.flatMap(([la, lo]) => [lo, la]));
 async function initSafeWalk() {
-  if (safeViewer) return;
-  // Create a separate Cesium viewer for SafeWalk tab
-  const token = (await j("/api/config").catch(() => ({})))?.cesium_token;
-  const ionOk = token && await fetch(`https://api.cesium.com/v1/assets/1/endpoint?access_token=${token}`).then(r => r.ok).catch(() => false);
-  const opts = {
-    animation: false, timeline: false, baseLayerPicker: false, geocoder: false, homeButton: false,
-    sceneModePicker: false, navigationHelpButton: false, infoBox: false, selectionIndicator: false, fullscreenButton: false,
-    skyBox: false, skyAtmosphere: false, contextOptions: {webgl: {alpha: false}}
-  };
-  if (ionOk) { Cesium.Ion.defaultAccessToken = token; opts.terrain = Cesium.Terrain.fromWorldTerrain(); }
-  else opts.baseLayer = new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({
-    url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", maximumLevel: 19 }));
-  safeViewer = new Cesium.Viewer("safeGlobe", opts);
-  safeViewer.scene.backgroundColor = Cesium.Color.BLACK;
-  for (const k of ["sun", "moon", "skyBox", "skyAtmosphere"]) if (safeViewer.scene[k]) safeViewer.scene[k].show = false;
-  safeViewer.scene.fog.enabled = false;
-  safeViewer.scene.globe.baseColor = Cesium.Color.BLACK;
-  safeViewer.scene.globe.showGroundAtmosphere = false;
-  safeViewer.scene.globe.enableLighting = false;
-  const base = safeViewer.imageryLayers.get(0);
-  if (base) { base.saturation = 0; base.brightness = 0.75; base.contrast = 1.15; }
-
-  // Load cameras for context
-  const reg = await j("/api/cameras").catch(() => ({cameras: []}));
-  for (const c of reg.cameras) {
-    if (!c.run) continue;
-    safeViewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(c.lon, c.lat),
-      point: {pixelSize: 5, color: Cesium.Color.WHITE, outlineColor: Cesium.Color.BLACK, outlineWidth: 1},
-      label: {show: true, text: c.id, font: "10px monospace", pixelOffset: new Cesium.Cartesian2(0, -13), fillColor: Cesium.Color.WHITE,
-        showBackground: true, backgroundColor: Cesium.Color.BLACK.withAlpha(.55)}
-    });
-  }
-
-  // Click handlers for origin/dest
-  const handler = new Cesium.ScreenSpaceEventHandler(safeViewer.scene.canvas);
-  handler.setInputAction(async (movement) => {
-    const pick = safeViewer.scene.pick(movement.position);
-    const cartesian = safeViewer.scene.globe.pick(safeViewer.camera.getPickRay(movement.position), safeViewer.scene);
-    if (!cartesian) return;
-    const carto = Cesium.Cartographic.fromCartesian(cartesian);
-    const lat = Cesium.Math.toDegrees(carto.latitude);
-    const lon = Cesium.Math.toDegrees(carto.longitude);
-
-    if (safeOrigin === null) {
-      safeOrigin = {lat, lon};
-      $("#safeOrigin").textContent = `Origin: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-      $("#safeOrigin").style.background = "var(--text)";
-      $("#safeOrigin").style.color = "#000";
-    } else if (safeDest === null) {
-      safeDest = {lat, lon};
-      $("#safeDest").textContent = `Dest: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-      $("#safeDest").style.background = "var(--text)";
-      $("#safeDest").style.color = "#000";
-    } else {
-      safeOrigin = {lat, lon};
-      safeDest = null;
-      $("#safeOrigin").textContent = `Origin: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-      $("#safeOrigin").style.background = "var(--text)";
-      $("#safeOrigin").style.color = "#000";
-      $("#safeDest").textContent = "Set Destination";
-      $("#safeDest").style.background = "var(--hover)";
-      $("#safeDest").style.color = "var(--text)";
-      clearSafeRoutes();
-    }
+  if (sw) return;
+  const { viewer: v, ionOk } = await makeViewer("safeMap");
+  sw = v;
+  for (const c of siteReg.cameras) if (c.run) sw.entities.add(camPoint(c));
+  siteHome(sw, siteReg, ionOk, 0);
+  new Cesium.ScreenSpaceEventHandler(sw.scene.canvas).setInputAction((m) => {
+    const ray = sw.camera.getPickRay(m.position);
+    const p = (ray && sw.scene.globe.pick(ray, sw.scene)) || sw.camera.pickEllipsoid(m.position);
+    if (!p) return;
+    const c = Cesium.Cartographic.fromCartesian(p);
+    if (swPts.length >= 2) swPts = [];
+    swPts.push([Cesium.Math.toDegrees(c.latitude), Cesium.Math.toDegrees(c.longitude)]);
+    refreshSafe();
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-  // Mode buttons
-  for (const btn of $$("#safeMode button")) {
-    btn.onclick = () => {
-      safeMode = btn.dataset.mode;
-      for (const b of $$("#safeMode button")) b.classList.toggle("on", b === btn);
-    };
-  }
-
-  // Heatmap checkboxes
-  for (const id of ["hmDeserted", "hmDark", "hmIncident"]) {
-    $(`#${id}`).onchange = () => updateHeatmap();
-  }
-
-  // Go button
-  $("#safeGo").onclick = async () => {
-    if (!safeOrigin || !safeDest) {
-      $("#safeResult").textContent = "Set both origin and destination first";
-      return;
+  $("#swReset").onclick = () => { swPts = []; refreshSafe(); };
+  refreshSafe();
+}
+async function refreshSafe() {
+  if (!sw || swBusy) return;
+  swBusy = true; swT = T;
+  const q = new URLSearchParams({ at: isoLocal(new Date(siteStart + T * 1000)) });
+  if (swPts.length === 2) for (const [k, [la, lo]] of [["origin", swPts[0]], ["dest", swPts[1]]]) { q.set(k + "_lat", la); q.set(k + "_lon", lo); }
+  const r = await j("/api/safewalk?" + q).catch((e) => ({ error: e.message }));
+  swBusy = false;
+  if (r.error) { $("#swOut").textContent = "Route failed: " + r.error; return; }
+  drawSafe(r);
+}
+function drawSafe(r) {
+  // streets: created once, then only their brightness and width change as the costs move
+  r.streets.forEach((s, i) => {
+    const risk = Math.min(1, (s.mult - 1) / 3), mat = W().withAlpha(.06 + risk * .55), w = 1 + risk * 3;
+    let e = swStreetEnts[i];
+    if (!e) e = swStreetEnts[i] = sw.entities.add({ polyline: { positions: swLine(s.coords), clampToGround: true, width: w, material: mat } });
+    else if (e.mult !== s.mult) { e.polyline.material = mat; e.polyline.width = w; }
+    e.mult = s.mult;
+  });
+  const key = JSON.stringify([swPts, r.fastest?.coords, r.safest?.coords, r.incidents]);
+  if (key !== swKey) {
+    swKey = key;
+    for (const e of swEnts) sw.entities.remove(e);
+    swEnts = [];
+    const add = (o) => swEnts.push(sw.entities.add(o));
+    for (const [la, lo, w] of r.incidents) add({ position: Cesium.Cartesian3.fromDegrees(lo, la), point: { pixelSize: 18,
+      color: Cesium.Color.TRANSPARENT, outlineColor: W().withAlpha(.35 + .65 * w), outlineWidth: 2,
+      heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity } });
+    if (r.fastest) {
+      add({ polyline: { positions: swLine(r.fastest.coords), width: 3, clampToGround: true,
+        material: new Cesium.PolylineDashMaterialProperty({ color: W().withAlpha(.75), dashLength: 14 }) } });
+      add({ polyline: { positions: swLine(r.safest.coords), width: 6, clampToGround: true, material: W() } });
     }
-    await calculateRoute();
-  };
-}
-
-function clearSafeRoutes() {
-  if (!safeViewer) return;
-  for (const e of safeViewer.entities.values()) {
-    if (e.properties?.kind?.getValue() === "route") safeViewer.entities.remove(e);
+    swPts.forEach(([la, lo], i) => add({ position: Cesium.Cartesian3.fromDegrees(lo, la), point: { pixelSize: 10, color: W(),
+      outlineColor: Cesium.Color.BLACK, outlineWidth: 2, heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity },
+      label: { text: i ? "To" : "From", font: "11px monospace", fillColor: Cesium.Color.BLACK, showBackground: true, backgroundColor: W(),
+        pixelOffset: new Cesium.Cartesian2(0, -18), heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Infinity } }));
   }
-  for (const layer of Object.values(safeHeatLayers)) {
-    if (layer) { safeViewer.imageryLayers.remove(layer, true); safeHeatLayers[layer] = null; }
+  $("#swHint").textContent = swPts.length === 1 ? "Now click where you're going." :
+    "Click the map twice: where you start, then where you're going.";
+  if (!r.fastest) { $("#swOut").innerHTML = `<span class="num">${esc(r.at.slice(11, 19))}</span> · ${r.incidents.length} active alert${r.incidents.length === 1 ? "" : "s"} on the site`; return; }
+  const f = r.fastest, s = r.safest, extra = f.length_m ? Math.round((s.length_m - f.length_m) / f.length_m * 100) : 0;
+  const reasons = (cams) => r.streets.filter((x) => cams.includes(x.camera)).reduce((m, x) => {
+    const why = [x.people == null ? "no data" : `${x.people} in view`];
+    if (x.incident > 0) why.push("alert nearby");
+    m[x.camera] = why.join(" · "); return m; }, {});
+  const why = reasons(f.cameras);
+  $("#swOut").innerHTML = `
+    <div class="rt"><span class="k"><i></i>Safest</span><span class="v num">${Math.round(s.length_m)} m${extra > 0 ? ` <span style="color:var(--dim)">+${extra}%</span>` : ""}</span>
+      <span class="m">${s.cameras.length ? "past " + s.cameras.map(esc).join(", ") : "no cameras on the way"}</span></div>
+    <div class="rt"><span class="k"><i class="dash"></i>Fastest</span><span class="v num">${Math.round(f.length_m)} m</span>
+      <span class="m">${f.cameras.length ? "past " + f.cameras.map(esc).join(", ") : "no cameras on the way"}</span></div>
+    ${Object.keys(why).length ? `<div class="why">${Object.entries(why).map(([c, w]) => `<span>${esc(c)}</span><span>${esc(w)}</span>`).join("")}</div>` : ""}
+    <div class="num">${esc(r.at.slice(11, 19))} site clock${s.length_m === f.length_m && JSON.stringify(s.coords) === JSON.stringify(f.coords) ? " · same street both ways" : ""}</div>`;
+}
+
+// ---------------- World: public livestreams as extra CCTV (data/streams.json) ----------------
+// Shown as plain embeds until someone presses Analyse: each analysed stream is one engine on the shared GPU.
+let wv = null, wTiles = {};
+const ytId = (u) => (u.match(/[?&]v=([\w-]{11})/) || [])[1];
+async function initWorld() {
+  if (wv) return;
+  const streams = await j("/api/streams");
+  for (const s of streams) {
+    const t = el("div", "wt", `<iframe allow="autoplay; encrypted-media" loading="lazy" title="${esc(s.name)}"
+      src="https://www.youtube-nocookie.com/embed/${ytId(s.url)}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0"></iframe>
+      <span class="st"></span><div class="bar"><b>${esc(s.name)}</b><span class="pl">${esc(s.place)}</span>
+      <button class="an">Analyse</button><button class="cc" title="Vision-model captions (spends credit)">Captions</button></div>`);
+    t.querySelector(".bar").onclick = () => pickStream(s.id, true);
+    t.querySelector(".an").onclick = (ev) => { ev.stopPropagation(); analyse(s.id, wTiles[s.id].on ? null : false); };
+    t.querySelector(".cc").onclick = (ev) => { ev.stopPropagation(); analyse(s.id, !wTiles[s.id].cc); };
+    $("#wGrid").append(t);
+    wTiles[s.id] = { el: t, s, on: false, cc: false, img: null };
   }
-  $("#safeResult").textContent = "";
+  const { viewer: v } = await makeViewer("worldMap");
+  wv = v;
+  for (const s of streams) wv.entities.add({ position: Cesium.Cartesian3.fromDegrees(s.lon, s.lat), properties: { kind: "stream", id: s.id },
+    point: { pixelSize: 7, color: W(), outlineColor: Cesium.Color.BLACK, outlineWidth: 1 },
+    label: { text: s.name, font: "10px monospace", pixelOffset: new Cesium.Cartesian2(0, -13), fillColor: W(), showBackground: true,
+      backgroundColor: Cesium.Color.BLACK.withAlpha(.55), backgroundPadding: new Cesium.Cartesian2(4, 2),
+      distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 9e6) } });
+  if (siteReg.cameras.length) {
+    const c = siteReg.cameras[0];
+    wv.entities.add({ position: Cesium.Cartesian3.fromDegrees(c.lon, c.lat), properties: { kind: "site", id: "site" },
+      point: { pixelSize: 9, color: Cesium.Color.TRANSPARENT, outlineColor: W(), outlineWidth: 2 },
+      label: { text: "MEVA site · recorded", font: "10px monospace", pixelOffset: new Cesium.Cartesian2(0, -14), fillColor: W(),
+        showBackground: true, backgroundColor: Cesium.Color.BLACK.withAlpha(.55), backgroundPadding: new Cesium.Cartesian2(4, 2) } });
+  }
+  wv.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(10, 20, 2.4e7) });
+  new Cesium.ScreenSpaceEventHandler(wv.scene.canvas).setInputAction((m) => {
+    const p = wv.scene.pick(m.position), props = p && p.id && p.id.properties;
+    if (!props) return;
+    if (props.kind.getValue() === "site") tab("site"); else pickStream(props.id.getValue(), false);
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+  pollStreams(); setInterval(pollStreams, 2500);
 }
-
-async function calculateRoute() {
-  clearSafeRoutes();
-  $("#safeResult").textContent = "Calculating...";
-  try {
-    const res = await j(`/api/safewalk?origin_lat=${safeOrigin.lat}&origin_lon=${safeOrigin.lon}&dest_lat=${safeDest.lat}&dest_lon=${safeDest.lon}`);
-    drawRoute(res.fastest, Cesium.Color.GREY, "fastest");
-    drawRoute(res.safest, Cesium.Color.LIME, "safest");
-    drawHeatmap(res.heatmap);
-    const fastLen = pathLength(res.fastest);
-    const safeLen = pathLength(res.safest);
-    $("#safeResult").innerHTML = `Fastest: ${fastLen.toFixed(1)} km<br>Safest: ${safeLen.toFixed(1)} km<br>Detour: ${((safeLen - fastLen) / fastLen * 100).toFixed(1)}%`;
-  } catch (e) {
-    $("#safeResult").textContent = "Route failed: " + e.message;
+function pickStream(id, fly) {
+  for (const k in wTiles) wTiles[k].el.classList.toggle("sel", k === id);
+  wTiles[id].el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (fly && wv) wv.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(wTiles[id].s.lon, wTiles[id].s.lat, 2.5e6), duration: 1.2 });
+}
+async function analyse(id, captions) {
+  // captions null = stop; true/false = (re)start the engine with or without vision-model captions
+  const r = captions === null ? await fetch(`/api/sources/${encodeURIComponent(id)}`, { method: "DELETE" })
+    : await fetch(`/api/streams/${encodeURIComponent(id)}/analyse`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ captions }) });
+  const msg = r.ok ? (captions === null ? "Stopped." : "Starting… the analysed picture replaces the embed in about 30 s.")
+    : (await r.json().catch(() => ({}))).detail || "could not start";
+  $("#wMsg").textContent = typeof msg === "string" ? msg : "could not start";
+  pollStreams();
+}
+async function pollStreams() {
+  if (!$("#world").classList.contains("show")) return;
+  const [streams, liveList] = await Promise.all([j("/api/streams").catch(() => null), j("/api/live").catch(() => null)]);
+  if (!streams || !liveList) return;
+  const live = Object.fromEntries(liveList.map((c) => [c.name, c]));
+  for (const s of streams) {
+    const t = wTiles[s.id];
+    if (!t) continue;
+    t.on = s.analysing; t.cc = s.captions;
+    t.el.querySelector(".an").classList.toggle("on", s.analysing);
+    t.el.querySelector(".an").textContent = s.analysing ? "Stop" : "Analyse";
+    t.el.querySelector(".cc").classList.toggle("on", s.captions);
+    const frame = s.analysing && live[s.id];
+    if (frame && !t.img) {  // the engine's annotated, face-blurred picture replaces the embed
+      t.img = el("img"); t.img.alt = ""; t.img.src = `/api/live/${encodeURIComponent(s.id)}/stream`;
+      t.el.querySelector("iframe").replaceWith(t.img);
+    } else if (!s.analysing && t.img) {
+      const f = el("iframe"); f.allow = "autoplay; encrypted-media"; f.title = s.name;
+      f.src = `https://www.youtube-nocookie.com/embed/${ytId(s.url)}?autoplay=1&mute=1&controls=0&playsinline=1&rel=0`;
+      t.img.replaceWith(f); t.img = null;
+    }
+    const n = frame ? (frame.people || []).filter((p) => p.in_view).length : 0;
+    t.el.querySelector(".st").textContent = frame ? `analysing · ${n} ${n === 1 ? "person" : "people"}${s.captions ? " · captions" : ""}`
+      : s.analysing ? "starting…" : "live";
   }
 }
-
-function drawRoute(coords, color, kind) {
-  if (!safeViewer || !coords?.length) return;
-  const positions = coords.flatMap(([la, lo]) => [lo, la, 10]);
-  safeViewer.entities.add({
-    polyline: {positions: Cesium.Cartesian3.fromDegreesArrayHeights(positions), width: 4, material: color, clampToGround: true},
-    properties: {kind: "route", type: kind}
-  });
-  // Start/end markers
-  const [sla, slo] = coords[0];
-  const [ela, elo] = coords[coords.length - 1];
-  safeViewer.entities.add({
-    position: Cesium.Cartesian3.fromDegrees(slo, sla, 20),
-    point: {pixelSize: 10, color: color, outlineColor: Cesium.Color.BLACK, outlineWidth: 2},
-    label: {text: kind === "fastest" ? "Start (Fast)" : "Start (Safe)", font: "11px monospace", fillColor: color, pixelOffset: new Cesium.Cartesian2(0, -18)}
-  });
-  safeViewer.entities.add({
-    position: Cesium.Cartesian3.fromDegrees(elo, ela, 20),
-    point: {pixelSize: 10, color: color, outlineColor: Cesium.Color.BLACK, outlineWidth: 2},
-    label: {text: "Destination", font: "11px monospace", fillColor: color, pixelOffset: new Cesium.Cartesian2(0, -18)}
-  });
-  // Fly to route
-  safeViewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(slo, sla, 500),
-    orientation: {pitch: Cesium.Math.toRadians(-45)}, duration: 1.5
-  });
-}
-
-function pathLength(coords) {
-  if (!coords?.length) return 0;
-  let d = 0;
-  for (let i = 1; i < coords.length; i++) {
-    const [la1, lo1] = coords[i-1], [la2, lo2] = coords[i];
-    const R = 6371;
-    const phi1 = la1 * Math.PI / 180, phi2 = la2 * Math.PI / 180;
-    const dphi = (la2 - la1) * Math.PI / 180, dlambda = (lo2 - lo1) * Math.PI / 180;
-    const a = Math.sin(dphi/2)**2 + Math.cos(phi1)*Math.cos(phi2)*Math.sin(dlambda/2)**2;
-    d += 2 * R * Math.asin(Math.sqrt(a));
-  }
-  return d;
-}
-
-function drawHeatmap(hm) {
-  if (!safeViewer || !hm) return;
-  // For now, just log - proper heatmap would need custom imagery provider
-  console.log("Heatmap data:", Object.keys(hm).map(k => `${k}: ${hm[k].length} edges`));
-  // Build legend
-  const box = $("#safeLegend");
-  box.replaceChildren();
-  for (const [name, color] of [["Deserted", "#888"], ["Dark", "#444"], ["Incident", "#f88"], ["Total", "#fff"]]) {
-    const row = el("div", "", `<span style="display:inline-block;width:12px;height:12px;background:${color};margin-right:8px"></span>${name}`);
-    box.append(row);
-  }
-}
-
-async function updateHeatmap() {
-  // Recalculate route to refresh heatmap
-  if (safeOrigin && safeDest) await calculateRoute();
-}
-
-$$ = (s) => Array.from(document.querySelectorAll(s));
 
 tab("cam");
 

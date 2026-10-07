@@ -72,20 +72,25 @@ class Writer:
 
 class LatestFrame:
     """Reads a camera stream on its own thread and keeps only the newest frame, so a slow
-    loop never falls behind the camera. Reconnects if the stream drops."""
+    loop never falls behind the camera. Reconnects if the stream drops.
+    pace_fps: HLS (YouTube live) arrives a segment at a time and decodes in a burst; without pacing only the
+    last frame of each burst survives (~1 fps). Pacing reads at the stream's own rate, a segment behind live."""
 
-    def __init__(self, src, cap):
-        self.src, self.cap = src, cap
+    def __init__(self, src, cap, pace_fps=0):
+        self.src, self.cap, self.pace = src, cap, pace_fps
         self.frame, self.n, self.alive = None, 0, True
         self.cond = threading.Condition()
         threading.Thread(target=self._run, daemon=True).start()
 
     def _run(self):
-        fails = 0
+        fails, due = 0, time.monotonic()
         while self.alive:
             ok, f = self.cap.read()
             if ok:
                 fails = 0
+                if self.pace:
+                    due = max(due + 1 / self.pace, time.monotonic() - 1)  # a stall resets the schedule
+                    time.sleep(max(0.0, due - time.monotonic()))
                 with self.cond:
                     self.frame, self.n = f, self.n + 1
                     self.cond.notify_all()
@@ -260,7 +265,7 @@ class Engine:
         self.feed = RuleFeed(self.hub, self.cfg["rules"]["poll_s"]) if self.hub else None
         self._hub_warned = False
         self.describer = None
-        if live or describe:
+        if describe:
             from angelseye.describe import Describer
             self.describer = Describer(self.cfg)
             if not self.describer.ok:
@@ -336,7 +341,8 @@ class Engine:
                 yield i / fps, frame
             return
         src = int(self.source) if str(self.source).isdigit() else str(self.source)
-        reader, n, start, nxt = LatestFrame(src, cap), 0, time.monotonic(), time.monotonic()
+        hls = isinstance(src, str) and ("m3u8" in src or "hls_playlist" in src)
+        reader, n, start, nxt = LatestFrame(src, cap, fps if hls else 0), 0, time.monotonic(), time.monotonic()
         try:
             while True:
                 wait = nxt - time.monotonic()
@@ -766,13 +772,16 @@ def main():
     ap.add_argument("--max-s", type=float, help="stop after this many seconds of video")
     ap.add_argument("--live", action="store_true", help="the source is a live camera (implies --describe)")
     ap.add_argument("--describe", action="store_true", help="describe each person's activity with the vision model")
+    ap.add_argument("--no-describe", action="store_true",
+                    help="live camera without vision-model calls: tracking, pose and rules only (saves credit)")
     ap.add_argument("--rotate", type=int, default=0, choices=(0, 90, 180, 270),
                     help="turn each frame clockwise by this much (a phone held upright streams sideways)")
     a = ap.parse_args()
     if len(a.video) > 1 and (a.out or a.camera or a.name or a.live):
         sys.exit("--out, --camera, --name and --live apply to a single source")
     for v in a.video:
-        Engine(v, a.camera, a.out, a.hub, a.max_s, live=a.live, describe=a.describe, name=a.name,
+        Engine(v, a.camera, a.out, a.hub, a.max_s, live=a.live,
+               describe=(a.describe or a.live) and not a.no_describe, name=a.name,
                rotate=a.rotate).run()
 
 

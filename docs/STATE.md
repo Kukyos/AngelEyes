@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera fixes I10).
+Last updated: 2026-10-07 (branch `mvp3`: SafeWalk merged, World tab with public livestreams).
 
 ---
 
@@ -70,6 +70,20 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
   or dangerous; looks only through a rule. Rules geometry can't check compile to a yes/no question asked inside
   the describer call (2.R3): "holding a laptop" fired on the replay, "wearing a lanyard" missed. Checked on a replayed recording only (`IMPROVEMENTS.md` I10).
 
+- **SafeWalk merged (`feat/safewalk` → `mvp3`, 4.21–4.22):** the teammate's branch is merged with their commits.
+  Routing no longer needs networkx or OSMnx: the graph is `data/street_graph.json` (189 nodes, 490 edges) and
+  `angelseye/safewalk.py` runs Dijkstra on the standard library, so the hub-only setup still starts. Thresholds are in
+  `config.yaml` `safewalk`. `/api/safewalk?at=` replays the site: people per camera from its tracks, incidents aged
+  against that time (with wall-clock time every 2018 alert had expired). The SafeWalk tab follows the site clock and
+  draws streets shaded by cost, a dashed fastest and a solid safest route, alert rings, and a reason per camera.
+  Checked: at 11:03:20 the fall near G341 moves the safe route (505 m → 532 m, +5%).
+- **World tab (4.23):** 12 public YouTube livestreams (`data/streams.json`: the user's 4 plus 8 street/square cams
+  picked by hand from Volve Vision, with Volve's coordinates) as embeds, plus pins on a world map. **Analyse** resolves
+  one with yt-dlp and starts an engine with `--no-describe` (tracking, pose, rules, blurred faces, no vision-model
+  credit); **Captions** restarts it with the vision model. Analysed streams also show on Camera. The HLS reader is
+  paced (segments arrive in bursts): 332 vs 141 distinct frames in 25 s, max gap 1.0 s vs 4.5 s, measured on Sukhumvit.
+  All 12 open in OpenCV at 720p. How well detection works on these scenes is not measured.
+
 ## Decided this session
 
 | Decision | Where |
@@ -96,6 +110,12 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
 
 ## Known problems (say them out loud, don't hide them)
 
+- **World tab embeds are not blurred.** Until Analyse is pressed a tile is YouTube's own player (grayscale), so faces
+  show as the channel publishes them. The user accepted this; only the analysed picture is ours and blurred.
+- **SafeWalk has no brightness for the recorded site** (only live engines push it), so "dark" is the unknown penalty
+  everywhere there. Streets without a camera all cost the same, so the safe route only moves where a camera sees an
+  alert or an empty street.
+
 - **Watch rules aren't proven on real people yet.** `hand_up` and `jump` pass only on
   synthetic keypoints. The "close together" rule fired 57 times in 40 s on the UMN crowd
   (uncalibrated, distance from `pair_scale`). That is the rule as written, but too noisy
@@ -114,6 +134,9 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
   needs context (zones) before a home or office demo.
 
 ## First steps for the next session
+
+- Try Analyse on two or three World streams at once on the 4060 (`hub.max_engines: 4`) and write the fps in
+  EVALUATION; check the false-alarm rate on busy scenes (Times Square, Sukhumvit) before showing them.
 
 0. Re-add the phone camera with **90°** rotation and check tiles, captions, the hand-up rule and one vision rule
    ("anyone holding a phone") live. The lanyard miss needs a look: try a larger crop_h for vision rules.
@@ -141,6 +164,7 @@ Last updated: 2026-10-07 (branch `mvp3`, cut from `mvp2` after the live-camera f
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | SafeWalk merge + World streams | Merged `feat/safewalk`; graph to JSON, stdlib Dijkstra, config thresholds, replay-time costs, finished SafeWalk tab. World tab: 12 livestreams, Analyse/Captions toggles (yt-dlp, `--no-describe`), paced HLS reader. Checked in Chrome. |
 | 2026-10-07 | mvp3 + rule questions | Branch `mvp3` pushed. D21 caption priorities; 2.R3 vision rules ride the describer call (2 yes in a row). Replay: laptop rule fired, lanyard rule missed. |
 | 2026-10-07 | Live accuracy (I10) | Phone feed was sideways: `--rotate`, rotate option on Add camera. Subject tiles replace enter/leave log lines. `trackers/live.yaml`, neutral prompt, 2 calls in flight. Replay: down 648→26 frames, IDs 20→14, 0 false alarms, 2.1–2.7 s per call. Not yet live. |
 | 2026-10-07 | Remote teammate testing | I8: token gate, `/webcam` page, ingest → engine auto-start, README section, RESOURCES (ngrok). Curl-checked only. |

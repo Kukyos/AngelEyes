@@ -17,6 +17,7 @@ import subprocess
 import sys
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Optional
@@ -308,22 +309,40 @@ def get_brightness():
             for cam, v in camera_brightness.items() if now - v["ts"] < 60}
 
 
+def site_counts(at: datetime):
+    """People each recorded site camera sees at `at` (from its tracks), for replaying the MEVA slot."""
+    out = {}
+    for c in json.loads((ROOT / "data/cameras.json").read_text())["cameras"]:
+        info, p = run_info(RUNS / c["id"]), RUNS / c["id"] / "tracks.jsonl"
+        if not info or not p.exists():
+            continue
+        local = (at - datetime.fromisoformat(info["start"])).total_seconds()
+        if 0 <= local <= info["duration_s"]:
+            d = _tracks(str(p), p.stat().st_mtime, 2)
+            out[c["id"]] = len(d["frames"].get(round(local * 2), []))
+    return out
+
+
 @app.get("/api/safewalk")
-def safewalk_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float):
-    """Return fastest and safest routes between two points."""
-    counts = {cam: v for cam, v in camera_counts.items() if time.time() - v["ts"] < 60}
-    brightness = {cam: v for cam, v in camera_brightness.items() if time.time() - v["ts"] < 60}
-    ev_list = events(camera=None, type=None)
-
-    sw = SafeWalk(counts=counts, brightness=brightness, events=ev_list)
-    fastest, safest = sw.route(origin_lat, origin_lon, dest_lat, dest_lon, prefer_safe=True)
-    heatmap = sw.heatmap()
-
-    return {
-        "fastest": fastest,
-        "safest": safest,
-        "heatmap": heatmap,
-    }
+def safewalk_route(origin_lat: Optional[float] = None, origin_lon: Optional[float] = None,
+                   dest_lat: Optional[float] = None, dest_lon: Optional[float] = None, at: Optional[str] = None):
+    """Fastest and safest walk between two points, plus every street's cost. `at` (ISO time) replays the
+    recorded site at that moment (people from its tracks, incidents aged against it); without it, live data."""
+    cfg = load_config()
+    max_age = cfg["safewalk"]["live_max_age_s"]
+    now = time.time()
+    counts = {k: v["count"] for k, v in camera_counts.items() if now - v["ts"] < max_age}
+    bright = {k: v["brightness"] for k, v in camera_brightness.items() if now - v["ts"] < max_age}
+    try:
+        when = datetime.fromisoformat(at) if at else datetime.now()
+    except ValueError:
+        raise HTTPException(400, "at must be an ISO time")
+    if at:
+        counts.update(site_counts(when))
+    sw = SafeWalk(counts=counts, brightness=bright, events=events(), now=when, cfg=cfg)
+    pts = (origin_lat, origin_lon, dest_lat, dest_lon)
+    route = sw.route(*pts) if None not in pts else {}  # no points yet: just the street costs
+    return {**route, "streets": sw.heatmap(), "incidents": sw.incidents, "at": when.isoformat()}
 
 
 @app.post("/api/live/{name}")
@@ -372,7 +391,7 @@ engines: dict[str, dict] = {}  # camera name -> {"proc": Popen, "url": IP camera
 NAME_RE = r"[\w.-]{1,64}"
 
 
-def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0):
+def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0, describe: bool = True):
     """One live engine per camera, run by the hub. Browser webcams and IP cameras share the cap."""
     e = engines.get(name)
     if e and e["proc"].poll() is None:
@@ -381,9 +400,9 @@ def start_engine(name: str, source: str, url: Optional[str], rotate: int = 0):
         raise HTTPException(503, "too many cameras running; remove one first")
     port = app.state.port
     UPLOADS.parent.mkdir(parents=True, exist_ok=True)
-    engines[name] = {"url": url, "proc": subprocess.Popen(
+    engines[name] = {"url": url, "describe": describe, "proc": subprocess.Popen(
         [sys.executable, "-m", "angelseye.engine", source, "--live", "--name", name, "--hub", f"http://127.0.0.1:{port}",
-         "--rotate", str(rotate)],
+         "--rotate", str(rotate)] + ([] if describe else ["--no-describe"]),
         cwd=ROOT, stdout=open(UPLOADS.parent / f"cam-{name}.log", "w"), stderr=subprocess.STDOUT)}
 
 
@@ -437,6 +456,51 @@ def source_remove(name: str, request: Request):
         e["proc"].terminate()
     live.pop(name, None)
     ingest.pop(name, None)
+    return {"ok": True}
+
+
+# --- public livestreams as extra CCTV (World tab). Shown as embeds; analysis only when switched on, since each
+# one is an engine on the shared GPU and captions spend vision-model credit.
+def stream_reg():
+    return json.loads((ROOT / "data/streams.json").read_text(encoding="utf-8"))["streams"]
+
+
+@app.get("/api/streams")
+def stream_list():
+    out = []
+    for c in stream_reg():
+        e = engines.get(c["id"])
+        on = bool(e and e["proc"].poll() is None)
+        out.append({**c, "analysing": on, "captions": on and e["describe"]})
+    return out
+
+
+class Analyse(BaseModel):
+    captions: bool = False  # vision-model activity captions (costs credit); off = tracking, pose and rules only
+
+
+@app.post("/api/streams/{sid}/analyse")
+def stream_analyse(sid: str, a: Analyse, request: Request):
+    """Start (or restart with/without captions) the engine on one livestream. Host only: the hub fetches it."""
+    host_only(request)
+    c = next((x for x in stream_reg() if x["id"] == sid), None)
+    if not c:
+        raise HTTPException(404, "no such stream")
+    try:  # YouTube's HLS address expires after some hours, so resolve it at start time, never store it
+        import yt_dlp
+        h = load_config()["streams"]["max_height"]
+        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True,
+                               "format": f"bestvideo[height<={h}]/best[height<={h}]"}) as y:
+            hls = y.extract_info(c["url"], download=False)["url"]
+    except ImportError:
+        raise HTTPException(501, "yt-dlp is not installed (pip install -r requirements.txt)")
+    except Exception as e:
+        raise HTTPException(502, f"could not open the stream: {str(e)[:200]}")
+    e = engines.get(sid)
+    if e and e["proc"].poll() is None:
+        e["proc"].terminate()
+        e["proc"].wait(10)
+    start_engine(sid, hls, c["url"], describe=a.captions)
     return {"ok": True}
 
 

@@ -115,3 +115,16 @@ describe:                    # open-ended activity via a vision-language model (
 
 hub:
   max_engines: 4             # webcams + IP cameras the hub runs at once (one engine each, shared GPU). Not yet measured on the 4060.
+
+safewalk:                    # street cost = length * (1 + deserted + dark + incident), each 0..1 (angelseye/safewalk.py)
+  deserted_count: 2          # this many people or fewer in view = deserted (1.0)
+  busy_span: 8               # ... falling linearly to 0 at deserted_count + busy_span people (10)
+  dark_brightness: 80        # mean frame brightness (0-255) at or below this = dark (1.0)
+  bright_span: 120           # ... falling linearly to 0 at 200
+  incident_radius_m: 100     # an alert this close to a street counts against it
+  incident_decay_h: 2.0      # and fades to nothing over this long
+  unknown_penalty: 0.5       # deserted and dark for a street with no camera or no data: unwatched is never "safe"
+  live_max_age_s: 60         # live counts / brightness older than this are dropped
+
+streams:                     # public livestreams on the World tab (data/streams.json), analysed only when switched on
+  max_height: 720            # px; the NL stream is 4K. 720p is plenty at live_imgsz 640
