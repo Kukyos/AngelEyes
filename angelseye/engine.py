@@ -128,6 +128,31 @@ class FramePusher:
                 time.sleep(1)
 
 
+class CountPusher:
+    """Posts rolling people count to hub's /api/counts/{camera}."""
+
+    def __init__(self, hub_url, camera_name):
+        self.url = f"{hub_url}/api/counts/{camera_name}"
+        self.count = 0
+        self.ev = threading.Event()
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def push(self, count):
+        self.count = int(count)
+        self.ev.set()
+
+    def _run(self):
+        while True:
+            self.ev.wait()
+            self.ev.clear()
+            try:
+                req = urllib.request.Request(self.url, data=json.dumps({"count": self.count}).encode(),
+                                             headers={"Content-Type": "application/json"}, method="POST")
+                urllib.request.urlopen(req, timeout=2).close()
+            except OSError:
+                time.sleep(1)
+
+
 def blur_heads(frame, boxes, kps, min_conf):
     """Privacy: blur every detected head. Head keypoints when visible, else the top of the box."""
     H, W = frame.shape[:2]
@@ -207,6 +232,7 @@ class Engine:
                 self.describer = None
         self.activity, self.present, self.missing, self.strips = {}, set(), {}, {}
         self.pusher = FramePusher(f"{self.hub}/api/live/{self.name}?session={self.idp}") if live and self.hub else None
+        self.count_pusher = CountPusher(self.hub, self.name) if live and self.hub else None
 
     # --- helpers -------------------------------------------------------------
     def iso(self, s):
@@ -380,6 +406,8 @@ class Engine:
                 ring.append(img)
                 if self.pusher:
                     self.pusher.push(img)
+                if self.count_pusher:
+                    self.count_pusher.push(len(active))
                 for key in list(clips):
                     w, stop, _ = clips[key]
                     w.write(img)

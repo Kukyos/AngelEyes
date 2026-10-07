@@ -190,6 +190,26 @@ async def ws(sock: WebSocket):
 
 live: dict[str, tuple[float, bytes, str]] = {}  # camera name -> (time, newest annotated JPEG, engine session id)
 
+# Camera counts for SafeWalk: {camera: {"count": int, "ts": float}}
+camera_counts: dict[str, dict] = {}
+
+
+@app.post("/api/counts/{camera}")
+async def push_count(camera: str, request: Request):
+    """Engine posts rolling people count for a camera."""
+    data = await request.json()
+    count = int(data.get("count", 0))
+    camera_counts[camera] = {"count": count, "ts": time.time()}
+    return {"ok": True}
+
+
+@app.get("/api/counts")
+def get_counts():
+    """Rolling 60s people count per camera."""
+    now = time.time()
+    return {cam: {"count": v["count"], "age_s": round(now - v["ts"], 1)}
+            for cam, v in camera_counts.items() if now - v["ts"] < 60}
+
 
 @app.post("/api/live/{name}")
 async def live_push(name: str, request: Request, session: str = ""):
