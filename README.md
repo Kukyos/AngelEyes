@@ -4,13 +4,20 @@
 HackNex 2026 Internal Qualifier · **HNX26PSI07 — Autonomous Vision & Behaviour Understanding** ·
 Scenario: public-safety CCTV (campus, streets, crowds).
 
+<p align="center">
+  <img src="data/samples/readme/live-captions.gif" width="640"
+       alt="A bus-stop CCTV camera: each person boxed with a skeleton, head blurred, and captioned, e.g. 'P85 leaning on pillar, holding green object', 'P56 leaning forward, hands near face', 'P68 sitting idle beside p26'">
+  <br><sub>A real CCTV camera (MEVA G506) replayed as a live feed. Every person is tracked under an ID with their
+  head blurred. The vision model captions what each one is doing: "leaning on pillar, holding green object".</sub>
+</p>
+
 Every person in a feed is detected, tracked under an anonymous ID and given a pose. Rules over
 those tracks flag falls, sudden runs, loitering, following, a distress pose and any watch rule the
 operator types in plain English. Each flag names **who** (track ID), **when** (start/end time) and
 **why** (the measured values against their limits, keyframes, a clip). A vision-language model adds
 an open-vocabulary caption of what each person is doing ("holding a scrambled puzzle cube") and
-answers questions about the footage, citing event IDs. Heads are blurred on every frame that leaves
-the engine. There is no face recognition and no gender inference.
+answers questions about the footage, citing event IDs. Every detected person's head is blurred on
+every frame that leaves the engine. There is no face recognition and no gender inference.
 
 - [What it does](#what-it-does) · [Results](#results) · [How it works](#how-it-works) ·
   [Sample input → output](#sample-input--output)
@@ -46,6 +53,25 @@ each judging point:
 | **World** | 12 public livestreams on a world map. **Analyse** runs the engine on one; **Captions** adds the vision model |
 
 There is also a phone page for responders at `/responder`.
+
+<table>
+  <tr>
+    <td width="50%"><img src="data/samples/readme/camera.jpg" alt="Camera tab: a live camera with boxes and blurred heads; on the right, one tile per person with what they are doing, watch rules, Ask, and a log of captions"></td>
+    <td width="50%"><img src="data/samples/readme/incidents.jpg" alt="Incidents tab: a fall clip, the rule it broke as measured vs limit, the height curve crossing its 65% limit, and an answer to 'What happens to P1, and when?' citing event fall-02-fall-001"></td>
+  </tr>
+  <tr>
+    <td><b>Camera</b>: one tile per person with a live caption ("sitting idle on bench", "leaning forward, hands near face"), plus watch rules, Ask, and a log with Refresh.</td>
+    <td><b>Incidents</b>: a verified fall, each check measured against its limit, the curve, and a question answered with the event it cites.</td>
+  </tr>
+  <tr>
+    <td><img src="data/samples/readme/site.jpg" alt="Site tab: 9 synchronised MEVA camera tiles, a grayscale map with each camera's position and view cone, and a list of loitering and fall events"></td>
+    <td><img src="data/samples/readme/safewalk.jpg" alt="SafeWalk tab: a map of the site's streets with the safest route drawn, 532 m, 5% longer than the 505 m fastest route, because of an alert near camera G341"></td>
+  </tr>
+  <tr>
+    <td><b>Site</b>: 9 real cameras of one town on one clock; their calibrated view cones on the map, events listed with who and when.</td>
+    <td><b>SafeWalk</b>: the safest route is 532 m, 5% longer than the 505 m fastest, because a camera on the fastest route saw an alert nearby.</td>
+  </tr>
+</table>
 
 ## Results
 
@@ -176,6 +202,14 @@ Output in `runs/eval/fall-02/`:
 - **When:** 2.0–3.5 s. The labelled truth is 1.3–3.63 s.
 - **Why** (the Incidents tab): upright at 0.5 s; went down 1.5 s later (limit ≤ 2.0 s); height fell
   to 38% of upright (limit ≤ 65%); stayed down 1.5 s (limit ≥ 1.0 s).
+
+The same event on the Incidents tab. Asked "What happens to P1, and when?", the vision model answered
+in 5.6 s: *"P1 falls to the floor between 2.0 and 3.5 seconds into the video `fall-02-fall-001`…"*
+
+<img src="data/samples/readme/incidents.jpg" width="900" alt="The fall-02 incident: the clip with P1 down and head blurred, the four checks of the fall rule each with measured value and limit, the height curve crossing the 65% limit, and the Ask answer citing fall-02-fall-001">
+
+The UR Fall clips are only shown as this still. In several of them the blur misses the face for a few
+frames mid-fall ([Known limits](#known-limits)).
 
 ## Technologies, libraries and models
 
@@ -379,8 +413,13 @@ hand sign.
 
 ## Known limits
 
-- **Blur follows detection.** A person the detector misses is not blurred (seen on fast runners in
-  the UMN clip).
+- **Blur follows detection.** A frame where the detector misses a person, or misplaces their head,
+  shows their face. We have seen this in three places:
+  - fast runners and some walkers in the UMN crowd clip;
+  - people mid-fall in UR Fall clips (`fall-02`, `fall-11`, `fall-26`);
+  - a single frame of `fall-14`.
+
+  The Incidents tab plays those clips as recorded.
 - **World embeds are not blurred.** Before **Analyse** is pressed, a World tile is YouTube's own
   player, so faces show as the channel publishes them. Only the analysed picture is ours and blurred.
 - **Falls still have false alarms on real CCTV.** A person half-hidden behind a pillar on MEVA G506
@@ -394,12 +433,14 @@ hand sign.
 
 ## Privacy
 
-- Heads are blurred on every frame that leaves the engine (`output.head_blur`, never off).
+- Every detected person's head is blurred on every frame that leaves the engine (`output.head_blur`,
+  never off). A missed detection is the gap ([Known limits](#known-limits)).
 - No face recognition and no gender or age inference. Rules and questions that ask for them are
   refused.
 - Raw frames are readable only from the host machine.
 - Keys live only in `.env`.
-- Footage with real faces is not committed. Only the `data/samples/` snapshot is: MEVA, CC-BY-4.0.
+- Footage with real faces is not committed. Only `data/samples/` is: the MEVA snapshot (CC-BY-4.0) and the
+  README pictures, each frame checked by eye ([`data/samples/readme/`](data/samples/readme/README.md)).
 
 ## Declared resources
 

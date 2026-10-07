@@ -20,6 +20,10 @@ Last updated: 2026-10-07 (**`main` = `mvp4`, the submission build**: demo + team
     self-checks, 10 unit tests, hub endpoints; the sample command reproduced `fall-02-fall-001` (P1, 0.75, 2.0-3.5 s)
     with the weights auto-downloaded. The full torch install was not redone from scratch.
   - `main`'s three docs-only commits (incl. the teammate's I5 notes) are merged in, their notes carried over.
+  - README pictures in `data/samples/readme/` (3.3 MB):
+    - a hero GIF of MEVA G506 replayed live with captions;
+    - Camera, Incidents + Ask, Site and SafeWalk screenshots.
+    - Taken from a separate hub on port 8012 in the scratch clone, headless Chrome over CDP; every frame checked by eye.
 - **Side A runs end to end and live.** One package, `angelseye/`:
   - `engine` turns video into tracks, events and annotated video.
   - `behaviours` holds the rules, each with self-checks.
@@ -168,7 +172,13 @@ Last updated: 2026-10-07 (**`main` = `mvp4`, the submission build**: demo + team
   "use the config default" (0.5 s).
 
 - **Privacy rule not fully met:** blur follows detection, so a person the detector misses
-  is not blurred (seen on fast runners in the UMN clip). Close-up faces are now covered
+  is not blurred.
+  - Checked frame by frame on 2026-10-07: faces show mid-fall in UR Fall `fall-02` (from 2.2 s; a phantom box took
+    the blur), `fall-11` and `fall-26`; one frame of `fall-14` (1.6 s); and walkers before the run in UMN
+    (Incidents clip at ~12 s).
+  - The Incidents tab plays these clips. Fix idea, not built: keep blurring a track's last head position for a few
+    frames after it is lost, and blur the box top when head keypoints are weak.
+  - Previously seen on fast runners in the UMN clip. Close-up faces are now covered
   properly; that was fixed after the first live test.
 - **False alarms on real CCTV:** bending, crouching and arms-spread close-ups looked like
   falls. Each was fixed with a rule (lying-shape required, hips low, cut-off boxes ignored),
@@ -215,6 +225,7 @@ Last updated: 2026-10-07 (**`main` = `mvp4`, the submission build**: demo + team
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | README pictures | Hero GIF + 4 screenshots from our own output (MEVA, one UR Fall still); found and documented face-blur misses in UR Fall and UMN clips; README privacy lines made accurate. |
 | 2026-10-07 | Wrap-up to main | Merged `dev/mvp3-offline-fixes` (max age 25 s) and `main` into `mvp4`; Refresh button; submission README per the PDF; fresh-clone check (hub-only install, self-checks, tests, sample I/O); `main` fast-forwarded to `mvp4`. |
 | 2026-10-07 | Demo (mvp4) | Incidents tab (verified only, rule broken measured vs limit), Ask (Airouter, scoped, cited, refusals), `hand_on_neck`, visible-thing vision questions, Use webcam, Remove fix, README checked against the PDF. Staged clips: hands ✓✓, pen ✓ when the API is fast, choke ✓ clip 1 / ✗ clip 2. |
 | 2026-10-07 | SafeWalk merge + World streams | Merged `feat/safewalk`; graph to JSON, stdlib Dijkstra, config thresholds, replay-time costs, finished SafeWalk tab. World tab: 12 livestreams, Analyse/Captions toggles (yt-dlp, `--no-describe`), paced HLS reader. Checked in Chrome. |
