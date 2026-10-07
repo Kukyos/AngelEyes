@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from angelseye import ROOT, env
+from angelseye.safewalk import SafeWalk
 
 RUNS = ROOT / "runs"
 WEB = ROOT / "web"
@@ -229,6 +230,24 @@ def get_brightness():
     now = time.time()
     return {cam: {"brightness": round(v["brightness"], 1), "age_s": round(now - v["ts"], 1)}
             for cam, v in camera_brightness.items() if now - v["ts"] < 60}
+
+
+@app.get("/api/safewalk")
+def safewalk_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float):
+    """Return fastest and safest routes between two points."""
+    counts = {cam: v for cam, v in camera_counts.items() if time.time() - v["ts"] < 60}
+    brightness = {cam: v for cam, v in camera_brightness.items() if time.time() - v["ts"] < 60}
+    events = events(camera=None, type=None)
+
+    sw = SafeWalk(counts=counts, brightness=brightness, events=events)
+    fastest, safest = sw.route(origin_lat, origin_lon, dest_lat, dest_lon, prefer_safe=True)
+    heatmap = sw.heatmap()
+
+    return {
+        "fastest": fastest,
+        "safest": safest,
+        "heatmap": heatmap,
+    }
 
 
 @app.post("/api/live/{name}")

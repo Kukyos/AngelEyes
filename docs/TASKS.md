@@ -104,7 +104,7 @@ something only verified in theory.
 | 4.14 | Camera->edge mapping: snap 9 MEVA cameras to nearest graph edges; add edge_id, street_name to cameras.json | Jerem | ☑ 11 cameras mapped to edges (all unnamed in OSM) |
 | 4.15 | Hub: /api/counts endpoint returning rolling 60s people count per camera | Jerem | ☑ POST /api/counts/{camera} + GET /api/counts; engine CountPusher |
 | 4.16 | Engine: push rolling frame-brightness per camera to hub (for "dark" cost) | Jerem | ☑ POST /api/brightness/{camera} + GET /api/brightness; engine BrightnessPusher |
-| 4.17 | Safewalk engine: angelseye/safewalk.py - A* with dynamic cost length x (1 + deserted + dark + incident) | Jerem | ☐ |
+| 4.17 | Safewalk engine: angelseye/safewalk.py - A* with dynamic cost length x (1 + deserted + dark + incident) | Jerem | ☑ SafeWalk class with route() + heatmap(); hub /api/safewalk endpoint |
 | 4.18 | Globe: two route polylines (fastest=grey, safest=green), heatmap raster (deserted/dark), incident pins | Jerem | ☐ |
 | 4.19 | UI: route picker (origin/dest click on globe), toggle fastest/safest, legend | Jerem | ☐ |
 | 4.20 | Demo polish: ensure hub-down error state, zero console errors, responsive on phone | Jerem | ☐ |
