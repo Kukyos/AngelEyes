@@ -4,12 +4,22 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (branch `mvp4` = `mvp3` + demo: Incidents, Ask, choke rule, webcam button).
+Last updated: 2026-10-07 (**`main` = `mvp4`, the submission build**: demo + teammate guards + Refresh + final README).
 
 ---
 
 ## Where we are
 
+- **Submission build (2026-10-07): `main` = `mvp4`.** On top of the demo build below:
+  - teammate's `dev/mvp3-offline-fixes` merged (I11/I12). Vision-rule yes answers expire after
+    `rules.vision_max_age_s` = 25 s; the branch had 10, which a 10-17 s API answer would miss.
+  - Camera → Log → **Refresh** (I13): clears the log and tiles; the engine ends activities and re-learns who is in view.
+  - README rewritten under the PDF's headings (what it does, technologies, install, configure, run, reproduce,
+    pipeline, model, evidence, sample I/O, scope, demo steps, resources, team). `.env.example` trimmed to the 5
+    variables the code reads. Checked from a fresh clone: hub-only install on Python 3.14 in PowerShell, all four
+    self-checks, 10 unit tests, hub endpoints; the sample command reproduced `fall-02-fall-001` (P1, 0.75, 2.0-3.5 s)
+    with the weights auto-downloaded. The full torch install was not redone from scratch.
+  - `main`'s three docs-only commits (incl. the teammate's I5 notes) are merged in, their notes carried over.
 - **Side A runs end to end and live.** One package, `angelseye/`:
   - `engine` turns video into tracks, events and annotated video.
   - `behaviours` holds the rules, each with self-checks.
@@ -170,6 +180,8 @@ Last updated: 2026-10-07 (branch `mvp4` = `mvp3` + demo: Incidents, Ask, choke r
 
 ## First steps for the next session
 
+- **Submit** the repo link (https://github.com/Kukyos/AngelEyes, public) in the Google Form from the PDF before
+  the evaluation ends. Restart the hub and the webcam engine so Refresh's engine side is live.
 - Before the demo: one hub (`python -m angelseye.hub --port 8000`), check `/api/showcase`, click every incident,
   ask one question; decide whether to re-run or remove the stale `umn-crowd` / `fall-03` / Davao runs (Clips).
 - Record SOS / following / loitering clips and add them to `ground_truth.csv` so they can be scored.
@@ -203,6 +215,7 @@ Last updated: 2026-10-07 (branch `mvp4` = `mvp3` + demo: Incidents, Ask, choke r
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | Wrap-up to main | Merged `dev/mvp3-offline-fixes` (max age 25 s) and `main` into `mvp4`; Refresh button; submission README per the PDF; fresh-clone check (hub-only install, self-checks, tests, sample I/O); `main` fast-forwarded to `mvp4`. |
 | 2026-10-07 | Demo (mvp4) | Incidents tab (verified only, rule broken measured vs limit), Ask (Airouter, scoped, cited, refusals), `hand_on_neck`, visible-thing vision questions, Use webcam, Remove fix, README checked against the PDF. Staged clips: hands ✓✓, pen ✓ when the API is fast, choke ✓ clip 1 / ✗ clip 2. |
 | 2026-10-07 | SafeWalk merge + World streams | Merged `feat/safewalk`; graph to JSON, stdlib Dijkstra, config thresholds, replay-time costs, finished SafeWalk tab. World tab: 12 livestreams, Analyse/Captions toggles (yt-dlp, `--no-describe`), paced HLS reader. Checked in Chrome. |
 | 2026-10-07 | Offline mvp3 guards | Branch `dev/mvp3-offline-fixes`: I11/I12 code and regression tests; 10 unittest cases and rules self-check pass with hub-only dependencies. No camera or real tunnel test on this machine. |
