@@ -89,6 +89,7 @@ something only verified in theory.
 | I6 | One person drawn as several on live cameras (1280 upscale) → `model.live_imgsz: 640` | kukyos | ◐ webcam: 1 box, 1 ID per frame; phone stream not rechecked |
 | I7 | Non-events in the log (idle captions, clothing, desk loitering) | kukyos | ◐ built on `mvp1`; idle handling seen live, not scored |
 | I5 | Check the model's self-reported confidence against labelled clips before alerting on it | jonathan-16bit | ◐ offline evaluator and review protocol built; labelled clips and calibration decision still needed |
+| I9 | Camera page is a grid of all live cameras; add/remove IP cameras by URL (host only); cap in `hub.max_engines` | kukyos | ◐ endpoints checked with a fake MJPEG camera; page JS syntax-checked, not looked at in a browser; max_engines not measured |
 | I8 | Teammates test Side A remotely: hub token gate for tunnel traffic, `/webcam` browser page, hub starts one engine per webcam (max 2) | kukyos | ◐ gate, ingest and engine start checked locally with curl; not tried through ngrok or a real webcam |
 
 ## Stage 4 — Side B

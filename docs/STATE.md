@@ -57,6 +57,11 @@ Last updated: 2026-10-07 (branch `mvp2`: Side B setup without a GPU).
   local traffic is exempt. Checked with curl (gate 401/200, raw stream 403 via tunnel, engine started,
   `/api/live` listed it). **Not yet tried through real ngrok with a real webcam.**
 
+- **IP cameras + grid (I9, `mvp2`):** Camera page shows every live camera as a tile; "Add camera" takes a name
+  and URL and the hub starts an engine (`/api/sources`, host only: the hub fetches that URL, so tunnel
+  callers are refused). Webcam page now sends 480 px frames, 3 in flight (it was ~2 fps through ngrok).
+  Checked with a fake MJPEG camera; the page itself has not been looked at in a browser yet.
+
 ## Decided this session
 
 | Decision | Where |

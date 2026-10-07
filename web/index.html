@@ -100,8 +100,18 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 #player video { max-width: 100%; max-height: 100%; }
 #cam { position: absolute; inset: 44px 0 0 0; display: none; grid-template-columns: minmax(0, 1fr) 380px; }
 #cam.show { display: grid; }
-#camView { display: grid; place-items: center; background: #000; min-height: 0; color: var(--faint); }
-#camView img { max-width: 100%; max-height: 100%; display: block; }
+#camView { display: grid; grid-template-rows: auto minmax(0, 1fr); background: #000; min-height: 0; color: var(--faint); }
+#srcForm { display: flex; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+#srcForm input { font: inherit; color: var(--text); background: #0a0a0a; border: 1px solid var(--line); padding: 6px 8px; min-width: 0; }
+#srcName { width: 110px; } #srcUrl { flex: 1; }
+#srcMsg { padding: 0 12px; font-size: 12px; color: var(--dim); }
+#camGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); grid-auto-rows: minmax(220px, 1fr); gap: 2px; min-height: 0; overflow: auto; }
+#camGrid .empty { grid-column: 1 / -1; display: grid; place-items: center; }
+.tile { position: relative; background: #000; display: grid; place-items: center; min-height: 0; cursor: pointer; outline: 1px solid var(--line); outline-offset: -1px; }
+.tile.sel { outline: 2px solid var(--text); outline-offset: -2px; }
+.tile img { max-width: 100%; max-height: 100%; display: block; }
+.tile .lab { position: absolute; left: 8px; top: 6px; font: 11px var(--mono); background: #000a; padding: 2px 6px; }
+.tile button { position: absolute; right: 6px; top: 6px; }
 #camSide { border-left: 1px solid var(--line); display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; }
 .rules { padding: 0 16px 12px; border-bottom: 1px solid var(--line); }
 .rules form { display: flex; gap: 8px; }
@@ -152,7 +162,13 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 </div>
 
 <main id="cam">
-  <div id="camView">Waiting for a camera. Start one with: python -m angelseye.engine http://PHONE_IP:8080/video --live --name phone --hub http://127.0.0.1:8000</div>
+  <div id="camView">
+    <div>
+      <form id="srcForm"><input id="srcName" maxlength="40" placeholder="name" aria-label="Camera name"><input id="srcUrl" placeholder="http://PHONE_IP:8080/video  (IP Webcam app)" aria-label="Camera URL"><button>Add camera</button></form>
+      <div id="srcMsg"></div>
+    </div>
+    <div id="camGrid"><div class="empty">No cameras yet. Add an IP camera above, or open /webcam to send a browser webcam.</div></div>
+  </div>
   <div id="camSide">
     <div class="now"><div class="head" style="padding-left:0;padding-right:0"><span>Now</span><span id="camName" class="num"></span></div><div id="nowList"><div class="empty" style="padding-left:0">Nobody in view</div></div></div>
     <div class="rules"><div class="head" style="padding-left:0;padding-right:0"><span>Watch rules</span></div>
@@ -509,22 +525,54 @@ $("#tabClips").onclick = () => tab("clips");
 let camName = null, camSession = null, camEvents = {}, camRows = {}, camMiss = 0;
 const inSession = (e) => camSession && e.id.startsWith(camSession + "-");
 const camT = (iso) => iso.slice(11, 19);
+function pickCam(name) {
+  camName = name; camSession = null; camEvents = {}; camRows = {};
+  $("#camName").textContent = name; $("#camLog").replaceChildren(); renderNow();
+  for (const t of document.querySelectorAll(".tile")) t.classList.toggle("sel", t.dataset.name === name);
+}
 async function pollCam() {
   const list = await j("/api/live").catch(() => null);
   if (list === null) return;                       // hub hiccup: keep what is on screen
-  const cam = list[0];
-  if (!cam) { if (camName && ++camMiss > 3) { camName = null; $("#camView").textContent = "Camera disconnected"; } return; }
-  camMiss = 0;
-  if (cam.name === camName && cam.session === camSession) return;   // same session: nothing to do
-  camName = cam.name; camSession = cam.session; camEvents = {}; camRows = {};
-  $("#camName").textContent = cam.name;
-  $("#camLog").replaceChildren();
-  $("#camView").innerHTML = `<img src="/api/live/${encodeURIComponent(cam.name)}/stream" alt="">`;
+  const grid = $("#camGrid"), seen = new Set(list.map((c) => c.name));
+  for (const c of list) {                          // one tile per live camera, created once
+    let t = grid.querySelector(`.tile[data-name="${CSS.escape(c.name)}"]`);
+    if (!t) {
+      grid.querySelector(".empty")?.remove();
+      t = el("div", "tile", `<img src="/api/live/${encodeURIComponent(c.name)}/stream" alt=""><span class="lab">${esc(c.name)}</span><button>Remove</button>`);
+      t.dataset.name = c.name;
+      t.onclick = () => pickCam(c.name);
+      t.querySelector("button").onclick = async (ev) => {
+        ev.stopPropagation();
+        const r = await fetch(`/api/sources/${encodeURIComponent(c.name)}`, { method: "DELETE" });
+        $("#srcMsg").textContent = r.ok ? "" : (await r.json().catch(() => ({}))).detail || "could not remove";
+      };
+      grid.append(t);
+    }
+    t.dataset.miss = 0;
+  }
+  for (const t of [...grid.querySelectorAll(".tile")])
+    if (!seen.has(t.dataset.name) && (t.dataset.miss = +t.dataset.miss + 1) > 3) t.remove();
+  if (!grid.children.length) grid.append(el("div", "empty", "No cameras yet. Add an IP camera above, or open /webcam to send a browser webcam."));
+  if (camName && !grid.querySelector(`.tile[data-name="${CSS.escape(camName)}"]`)) {
+    camName = null; camSession = null; $("#camName").textContent = ""; $("#camLog").replaceChildren(); renderNow();
+  }
+  if (!camName && list[0]) pickCam(list[0].name);
+  const cam = list.find((c) => c.name === camName);
+  if (!cam || cam.session === camSession) return;  // same session: nothing to do
+  camSession = cam.session;
   const evs = (await j(`/api/events?camera=${encodeURIComponent(cam.name)}`).catch(() => []))
     .filter(inSession).sort((a, b) => (a.t_start < b.t_start ? -1 : 1));
   for (const e of evs) camUpsert(e, false);
   renderNow();
 }
+$("#srcForm").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const r = await fetch("/api/sources", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: $("#srcName").value.trim(), url: $("#srcUrl").value.trim() }) });
+  const msg = r.ok ? "Starting… the tile appears in about 30 s." : (await r.json().catch(() => ({}))).detail || "could not add";
+  $("#srcMsg").textContent = typeof msg === "string" ? msg : "name: letters/digits only; url must start with http://";
+  if (r.ok) { $("#srcName").value = ""; $("#srcUrl").value = ""; }
+};
 function camText(e) {
   if (e.type === "activity") return e.evidence.series.caption;
   return e.type === "rule" ? `Rule: ${e.evidence.series.rule_text}` : NAMES[e.type];

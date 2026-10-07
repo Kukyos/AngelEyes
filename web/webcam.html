@@ -17,13 +17,15 @@ $("go").onclick=async()=>{
   $("go").disabled=true;
   $("v").srcObject=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});
   const v=$("v"),c=$("c"),x=c.getContext("2d");
-  for(;;){  // one frame in flight at a time, ~8 fps
-    await new Promise(r=>setTimeout(r,120));
-    if(!v.videoWidth)continue;
-    c.width=v.videoWidth;c.height=v.videoHeight;x.drawImage(v,0,0);
-    const b=await new Promise(r=>c.toBlob(r,"image/jpeg",0.7));
+  let busy=0;  // up to 3 frames in flight: the tunnel round trip is slow, one at a time gave ~2 fps
+  setInterval(async()=>{
+    if(busy>=3||!v.videoWidth)return;
+    busy++;
+    c.width=480;c.height=Math.round(480*v.videoHeight/v.videoWidth);x.drawImage(v,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,"image/jpeg",0.6));
     const r=await fetch("/api/ingest/"+name,{method:"POST",body:b}).catch(()=>null);
-    $("st").textContent=r&&r.ok?"sending as "+name:r?"refused: "+(await r.text()):"connection lost, retrying";
-  }
+    busy--;
+    $("st").textContent=r&&r.ok?"sending as "+name:r?"refused: "+(await r.text()).slice(0,120):"connection lost, retrying";
+  },100);
 };
 </script>

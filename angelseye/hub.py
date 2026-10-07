@@ -304,33 +304,73 @@ async def live_stream(name: str, request: Request):
 # A teammate's browser webcam (/webcam) posts raw frames here; only the engine on this machine may read them
 # back (loopback), so unblurred faces never leave. The engine's annotated, blurred output appears under /api/live.
 ingest: dict[str, tuple[float, bytes, str]] = {}
-ingest_procs: dict[str, subprocess.Popen] = {}
-MAX_REMOTE_ENGINES = 2
+engines: dict[str, dict] = {}  # camera name -> {"proc": Popen, "url": IP camera URL or None for a browser webcam}
+NAME_RE = r"[\w.-]{1,64}"
+
+
+def start_engine(name: str, source: str, url: Optional[str]):
+    """One live engine per camera, run by the hub. Browser webcams and IP cameras share the cap."""
+    e = engines.get(name)
+    if e and e["proc"].poll() is None:
+        return
+    if sum(x["proc"].poll() is None for x in engines.values()) >= load_config()["hub"]["max_engines"]:
+        raise HTTPException(503, "too many cameras running; remove one first")
+    port = app.state.port
+    UPLOADS.parent.mkdir(parents=True, exist_ok=True)
+    engines[name] = {"url": url, "proc": subprocess.Popen(
+        [sys.executable, "-m", "angelseye.engine", source, "--live", "--name", name, "--hub", f"http://127.0.0.1:{port}"],
+        cwd=ROOT, stdout=open(UPLOADS.parent / f"cam-{name}.log", "w"), stderr=subprocess.STDOUT)}
+
+
+def host_only(request: Request):
+    if "x-forwarded-for" in request.headers:
+        raise HTTPException(403, "only on the host machine (localhost), not through the tunnel")
 
 
 @app.post("/api/ingest/{name}")
 async def ingest_push(name: str, request: Request):
     body = await request.body()
-    if not re.fullmatch(r"[\w.-]{1,64}", name) or not body or len(body) > 3_000_000:
+    if not re.fullmatch(NAME_RE, name) or not body or len(body) > 3_000_000:
         raise HTTPException(400, "bad frame")
     ingest[name] = (time.time(), body, "")
-    p = ingest_procs.get(name)
-    if p is None or p.poll() is not None:
-        if sum(q.poll() is None for q in ingest_procs.values()) >= MAX_REMOTE_ENGINES:
-            raise HTTPException(503, f"{MAX_REMOTE_ENGINES} remote webcams already running; wait for one to stop")
-        port = app.state.port
-        UPLOADS.parent.mkdir(parents=True, exist_ok=True)
-        ingest_procs[name] = subprocess.Popen(
-            [sys.executable, "-m", "angelseye.engine", f"http://127.0.0.1:{port}/api/ingest/{name}/stream", "--live",
-             "--name", name, "--hub", f"http://127.0.0.1:{port}"],
-            cwd=ROOT, stdout=open(UPLOADS.parent / f"ingest-{name}.log", "w"), stderr=subprocess.STDOUT)
+    start_engine(name, f"http://127.0.0.1:{app.state.port}/api/ingest/{name}/stream", None)
+    return {"ok": True}
+
+
+class Source(BaseModel):
+    name: str
+    url: str
+
+
+@app.post("/api/sources")
+def source_add(src: Source, request: Request):
+    """Add an IP camera (e.g. the IP Webcam app: http://PHONE_IP:8080/video). Host only: the hub fetches this URL."""
+    host_only(request)
+    if not re.fullmatch(NAME_RE, src.name) or not re.match(r"(https?|rtsp)://\S+$", src.url):
+        raise HTTPException(400, "name: letters/digits only; url must start with http://, https:// or rtsp://")
+    start_engine(src.name, src.url, src.url)
+    return {"ok": True}
+
+
+@app.get("/api/sources")
+def source_list():
+    return [{"name": n, "url": e["url"], "running": e["proc"].poll() is None} for n, e in engines.items()]
+
+
+@app.delete("/api/sources/{name}")
+def source_remove(name: str, request: Request):
+    host_only(request)
+    e = engines.pop(name, None)
+    if e:
+        e["proc"].terminate()
+    live.pop(name, None)
+    ingest.pop(name, None)
     return {"ok": True}
 
 
 @app.get("/api/ingest/{name}/stream")
 async def ingest_stream(name: str, request: Request):
-    if "x-forwarded-for" in request.headers:
-        raise HTTPException(403, "raw frames are local only")
+    host_only(request)  # raw, unblurred frames: the engine on this machine only
     return mjpeg(ingest, name, request)
 
 

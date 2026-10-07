@@ -107,3 +107,6 @@ describe:                    # open-ended activity via a vision-language model (
   enter_strong: 12           # and have this many confident detections (filters flickers, coats on hooks)
   leave_s: 3.0               # a person unseen this long, with no new track taking their place, has "left the frame"
   same_words: 0.5            # word overlap at which a new description counts as the same activity
+
+hub:
+  max_engines: 4             # webcams + IP cameras the hub runs at once (one engine each, shared GPU). Not yet measured on the 4060.

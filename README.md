@@ -54,6 +54,14 @@ the camera, then open `/` → **Camera** and pick their name. Only 2 webcams run
 Without `HUB_TOKEN` the gate is off, so never tunnel without it. Raw frames are readable only from the
 host itself; the tunnel sees only blurred output. Each person's vision-model captions use the host's key.
 
+## IP cameras (CCTV grid)
+
+On the host's own browser (http://localhost:8000, not through the tunnel), **Camera** → type a name and a
+camera URL (IP Webcam app: `http://PHONE_IP:8080/video`) → **Add camera**. The hub starts one engine for it.
+Every live camera, including teammates' webcams, shows as a tile in one grid; click a tile to see its
+people and log on the right, **Remove** to stop it. The phone must be reachable from the host
+(same Wi-Fi; campus Wi-Fi blocks it, use a hotspot). `hub.max_engines` in `config.yaml` caps how many run.
+
 ## Run it
 
 Windows, Python 3.12, an NVIDIA GPU (CPU works, slower), ffmpeg on PATH.
