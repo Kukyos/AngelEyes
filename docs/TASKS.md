@@ -88,7 +88,7 @@ something only verified in theory.
 | I4 | Vision-model latency 3–14 s: faster model or fewer people per call | | ☐ |
 | I6 | One person drawn as several on live cameras (1280 upscale) → `model.live_imgsz: 640` | kukyos | ◐ webcam: 1 box, 1 ID per frame; phone stream not rechecked |
 | I7 | Non-events in the log (idle captions, clothing, desk loitering) | kukyos | ◐ built on `mvp1`; idle handling seen live, not scored |
-| I5 | Check the model's self-reported confidence against labelled clips before alerting on it | | ☐ |
+| I5 | Check the model's self-reported confidence against labelled clips before alerting on it | jonathan-16bit | ◐ offline evaluator and review protocol built; labelled clips and calibration decision still needed |
 
 ## Stage 4 — Side B
 

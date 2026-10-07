@@ -35,6 +35,9 @@ Last updated: 2026-10-07 (issues doc after the first build).
 - **Branch `mvp1`** is the working build the user tests; live fixes I6/I7 are there
   (`docs/IMPROVEMENTS.md`). Campus Wi-Fi blocks the phone camera; use the laptop webcam
   (`angelseye.engine 0 --live --name laptop --hub http://127.0.0.1:8000`) or the phone's hotspot.
+- **I5 branch:** `eval/activity-confidence-i5` has a standalone scorer and review
+  protocol for the confidence displayed on vision-model activity events. It needs
+  labelled clips before any calibration conclusion; it does not alter live alerts.
 - **Next build (the user's):** admin-written watch rules on the live camera ("flag if a person
   raises their hand", "…jumps three times", person–person and person–object relations).
 
@@ -99,6 +102,7 @@ Last updated: 2026-10-07 (issues doc after the first build).
 | Date | Session | Outcome |
 |---|---|---|
 | 2026-10-07 | mvp1 fixes | Branch `mvp1`. Webcam test: one person showed as 3–5 nested boxes / 18 IDs (1280 upscale); `live_imgsz: 640` → 1 box, 1 ID. Idle answers not logged, no clothing/absence captions, loitering only on calibrated cameras (I6, I7). Rules module (2.R1) paused, no code yet. |
+| 2026-10-07 | I5 confidence evaluation | Built offline event-confidence scorer, label-sheet generator, and review protocol on an independent branch; synthetic checks pass. Real labels and a calibration decision remain. |
 | 2026-10-07 | Issues doc | Wrote `IMPROVEMENTS.md` (I1–I5) with measured evidence from the hub DB and `vlm` stats; TASKS rows for teammates. |
 | 2026-10-07 | First build | Engine, hub, eval, bench, web page (Camera / Site / Clips), responder page. MEVA site from calibration; UR Fall, UMN and CAVIAR scored; live phone camera with open-ended activity via Qwen3-VL. Decisions D13–D19. Committed and pushed. |
 | 2026-10-06 | Pre-planning | Pushed docs to GitHub. Re-read PSI07's must-do list. Wrote `CAPABILITY_MAP.md` (all behaviours by layer, Side B features, legal paths); added D10–D12 and task 0.8. No code. |
