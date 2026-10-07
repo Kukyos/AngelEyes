@@ -83,6 +83,17 @@ sos_pose:                    # whole-body distress pose: both wrists above the h
   min_kpt_conf: 0.4
   max_torso_angle_deg: 25    # standing upright; rejects overhead views where "above the head" means nothing
 
+rules:                       # admin-written watch rules (D20, angelseye/rules.py). Not yet scored (2.R4).
+  hold_s: 0.5                # a pose rule must stay true this long unless the rule says otherwise
+  min_kpt_conf: 0.4
+  bend_deg: 45               # torso from vertical that counts as bent over
+  jump_rise: 0.3             # shoulders this many torso lengths above standing level = one jump (untuned)
+  jump_base_s: 2.0           # standing level = low shoulder position over this long
+  jump_window_s: 5.0         # "jumps N times" within this long, unless the rule says
+  near_m: 1.0                # "close together" unless the rule says
+  compile_timeout_s: 20
+  poll_s: 3.0                # engine re-reads active rules from the hub this often
+
 describe:                    # open-ended activity via a vision-language model (only with --live or --describe)
   interval_s: 4.0            # at most one call this often while someone is in view (~$0.0003-0.0005 per call measured)
   min_interval_s: 1.5        # sooner when someone enters or leaves

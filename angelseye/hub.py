@@ -26,7 +26,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from angelseye import ROOT, env
+from angelseye import ROOT, env, load_config, rules
 
 RUNS = ROOT / "runs"
 WEB = ROOT / "web"
@@ -44,7 +44,7 @@ class Evidence(BaseModel):
 class Event(BaseModel):
     """The event record from docs/ARCHITECTURE.md. No event without who, when and evidence."""
     id: str = Field(min_length=1, max_length=200)
-    type: Literal["sos", "following", "loitering", "fall", "sudden_run", "activity"]
+    type: Literal["sos", "following", "loitering", "fall", "sudden_run", "activity", "rule"]
     camera: str = Field(min_length=1, max_length=200)
     track_ids: list[int] = Field(min_length=1)
     t_start: str
@@ -68,6 +68,7 @@ def init_db():
             id TEXT PRIMARY KEY, type TEXT NOT NULL, camera TEXT NOT NULL, track_ids TEXT NOT NULL,
             t_start TEXT NOT NULL, t_end TEXT NOT NULL, confidence REAL NOT NULL,
             evidence TEXT NOT NULL, clip_path TEXT, geo TEXT)""")
+        con.execute("CREATE TABLE IF NOT EXISTS rules (id TEXT PRIMARY KEY, text TEXT NOT NULL, spec TEXT NOT NULL, created TEXT NOT NULL)")
 
 
 def upsert(ev: Event):
@@ -153,6 +154,48 @@ async def post_event(ev: Event):
             await ws.send_json(data)
         except Exception:
             clients.discard(ws)
+    return {"ok": True}
+
+
+# --- watch rules (D20): compile -> admin confirms -> engines pick them up ------
+class RuleText(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+
+
+class Rule(RuleText):
+    spec: dict
+
+
+@app.post("/api/rules/compile")
+def rule_compile(r: RuleText):
+    """Preview only: what the rule compiles to, in plain words. Nothing is saved."""
+    return rules.compile_rule(r.text, load_config())
+
+
+@app.get("/api/rules")
+def rule_list():
+    with db() as con:
+        return [{"id": x["id"], "text": x["text"], "spec": json.loads(x["spec"]), "created": x["created"]}
+                for x in con.execute("SELECT * FROM rules ORDER BY created")]
+
+
+@app.post("/api/rules")
+def rule_add(r: Rule):
+    try:
+        spec = rules.validate(r.spec)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    rid = "r" + uuid.uuid4().hex[:6]
+    with db() as con:
+        con.execute("INSERT INTO rules VALUES (?,?,?,?)", (rid, r.text.strip(), json.dumps(spec),
+                                                           time.strftime("%Y-%m-%dT%H:%M:%S")))
+    return {"id": rid, "text": r.text.strip(), "spec": spec}
+
+
+@app.delete("/api/rules/{rid}")
+def rule_delete(rid: str):
+    with db() as con:
+        con.execute("DELETE FROM rules WHERE id=?", (rid,))
     return {"ok": True}
 
 

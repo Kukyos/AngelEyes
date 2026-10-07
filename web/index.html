@@ -102,7 +102,15 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 #cam.show { display: grid; }
 #camView { display: grid; place-items: center; background: #000; min-height: 0; color: var(--faint); }
 #camView img { max-width: 100%; max-height: 100%; display: block; }
-#camSide { border-left: 1px solid var(--line); display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+#camSide { border-left: 1px solid var(--line); display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; }
+.rules { padding: 0 16px 12px; border-bottom: 1px solid var(--line); }
+.rules form { display: flex; gap: 8px; }
+.rules input { flex: 1; min-width: 0; font: inherit; color: var(--text); background: #0a0a0a; border: 1px solid var(--line); padding: 6px 8px; }
+.rules input:focus { outline: 1px solid var(--faint); }
+.rules .pv { padding: 8px 0 0; font-size: 12px; color: var(--dim); }
+.rules .pv b { color: var(--text); font-weight: 500; }
+.rule { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline; padding: 6px 0 0; font-size: 12px; }
+.rule .s { grid-column: 1; font: 11px var(--mono); color: var(--faint); }
 .now { padding: 4px 16px 16px; border-bottom: 1px solid var(--line); }
 .who { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: baseline; padding: 10px 0; animation: enter .4s var(--ease); }
 .who .p { font: 12px var(--mono); color: var(--dim); }
@@ -147,6 +155,9 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
   <div id="camView">Waiting for a camera. Start one with: python -m angelseye.engine http://PHONE_IP:8080/video --live --name phone --hub http://127.0.0.1:8000</div>
   <div id="camSide">
     <div class="now"><div class="head" style="padding-left:0;padding-right:0"><span>Now</span><span id="camName" class="num"></span></div><div id="nowList"><div class="empty" style="padding-left:0">Nobody in view</div></div></div>
+    <div class="rules"><div class="head" style="padding-left:0;padding-right:0"><span>Watch rules</span></div>
+      <form id="ruleForm"><input id="ruleText" maxlength="300" placeholder="flag if a person raises their hand" aria-label="New watch rule"><button>Check</button></form>
+      <div id="rulePv" class="pv"></div><div id="ruleList"></div></div>
     <div style="display:flex;flex-direction:column;min-height:0"><div class="head"><span>Log</span></div><div class="list" id="camLog"></div></div>
   </div>
 </main>
@@ -163,7 +174,7 @@ footer { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; border-
 <div id="down">Hub unreachable<br>python -m angelseye.hub</div>
 
 <script>
-const NAMES = { fall: "Fall", sudden_run: "Sudden run", sos: "SOS", following: "Following", loitering: "Loitering", activity: "Activity" };
+const NAMES = { fall: "Fall", sudden_run: "Sudden run", sos: "SOS", following: "Following", loitering: "Loitering", activity: "Activity", rule: "Rule" };
 const isAlert = (e) => e.type !== "loitering" && e.type !== "activity";
 const $ = (s) => document.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -514,7 +525,10 @@ async function pollCam() {
   for (const e of evs) camUpsert(e, false);
   renderNow();
 }
-function camText(e) { return e.type === "activity" ? e.evidence.series.caption : NAMES[e.type]; }
+function camText(e) {
+  if (e.type === "activity") return e.evidence.series.caption;
+  return e.type === "rule" ? `Rule: ${e.evidence.series.rule_text}` : NAMES[e.type];
+}
 function camUpsert(e, animate) {
   camEvents[e.id] = e;
   let row = camRows[e.id];
@@ -556,6 +570,32 @@ function renderNow() {
 }
 setInterval(pollCam, 2000);
 pollCam();
+
+// ---------------- watch rules (D20): check -> read it back -> confirm ----------------
+async function loadRules() {
+  const rules = await j("/api/rules").catch(() => []);
+  $("#ruleList").replaceChildren(...rules.map((r) => {
+    const row = el("div", "rule", `<span>${esc(r.text)}</span><button>Remove</button><span class="s">${esc(r.spec.summary || "")}</span>`);
+    row.querySelector("button").onclick = async () => { await fetch(`/api/rules/${r.id}`, { method: "DELETE" }); loadRules(); };
+    return row;
+  }));
+}
+$("#ruleForm").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const text = $("#ruleText").value.trim(), pv = $("#rulePv");
+  if (!text) return;
+  pv.textContent = "Checking…";
+  const res = await j("/api/rules/compile", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }) }).catch((e) => ({ error: e.message }));
+  if (res.error) { pv.textContent = res.error; return; }
+  pv.innerHTML = `Will flag: <b>${esc(res.spec.summary || text)}</b> <button>Confirm</button>`;
+  pv.querySelector("button").onclick = async () => {
+    await j("/api/rules", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, spec: res.spec }) }).catch((e) => { pv.textContent = e.message; throw e; });
+    pv.textContent = ""; $("#ruleText").value = ""; loadRules();
+  };
+};
+loadRules();
 tab("cam");
 
 boot();

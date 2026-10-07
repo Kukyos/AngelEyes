@@ -4,7 +4,7 @@
 It says where the project is right now, what is decided, what is not, and what to
 do next. Everything else in `docs/` is reference; this is the handoff.
 
-Last updated: 2026-10-07 (issues doc after the first build).
+Last updated: 2026-10-07 (watch rules 2.R1 built; I5 eval branch merged into `mvp1`).
 
 ---
 
@@ -38,8 +38,14 @@ Last updated: 2026-10-07 (issues doc after the first build).
 - **I5 branch:** `eval/activity-confidence-i5` has a standalone scorer and review
   protocol for the confidence displayed on vision-model activity events. It needs
   labelled clips before any calibration conclusion; it does not alter live alerts.
-- **Next build (the user's):** admin-written watch rules on the live camera ("flag if a person
-  raises their hand", "…jumps three times", person–person and person–object relations).
+- **Watch rules (D20, 2.R1) built on `mvp1`:** the admin types a rule in the Camera page's "Watch
+  rules" box. It is compiled by one text-only model call into fixed checks (`hand_up`, `bent_over`,
+  `jump`, pair `near`) and read back as "Will flag: …". On Confirm it is stored in the hub
+  (`/api/rules`); engines re-read it every 3 s and emit `rule` events. Objects (2.R2) and
+  vision-model yes/no (2.R3) are refused for now, and so are gender, age, face and identity rules
+  (both refusals seen live). Self-checks: `python -m angelseye.rules`.
+- **I5 merged:** `eval/activity-confidence-i5` (teammate) is merged into `mvp1`:
+  `angelseye/eval_activity.py`, `docs/I5_CONFIDENCE_EVALUATION.md`, `tests/test_eval_activity.py`.
 
 ## Decided this session
 
@@ -67,6 +73,12 @@ Last updated: 2026-10-07 (issues doc after the first build).
 
 ## Known problems (say them out loud, don't hide them)
 
+- **Watch rules aren't proven on real people yet.** `hand_up` and `jump` pass only on
+  synthetic keypoints. The "close together" rule fired 57 times in 40 s on the UMN crowd
+  (uncalibrated, distance from `pair_scale`). That is the rule as written, but too noisy
+  for a crowd. The model sends `hold_s: 0` when no hold was stated; it is now read as
+  "use the config default" (0.5 s).
+
 - **Privacy rule not fully met:** blur follows detection, so a person the detector misses
   is not blurred (seen on fast runners in the UMN clip). Close-up faces are now covered
   properly; that was fixed after the first live test.
@@ -80,6 +92,8 @@ Last updated: 2026-10-07 (issues doc after the first build).
 
 ## First steps for the next session
 
+0. Test watch rules live on the webcam: raise a hand, jump 3×, bend down. Then record those
+   clips and score them (2.R4). After that comes 2.R2 (YOLOE objects).
 1. Read this file, then `EVALUATION.md` and `DECISIONS.md` D13–D19.
 2. Start: `python -m angelseye.hub`, then the live command in the README, and open
    http://localhost:8000.
@@ -101,6 +115,8 @@ Last updated: 2026-10-07 (issues doc after the first build).
 
 | Date | Session | Outcome |
 |---|---|---|
+| 2026-10-07 | Watch rules + I5 merge | Merged teammate's `eval/activity-confidence-i5` into `mvp1`. Finished 2.R1: `rules.py` + hub `/api/rules` + Camera rule box + `rule` events. Live compile verified; refusals verified; hub→engine→event verified on UMN (57 pair events/40 s, 0 hand). Fixed `hold_s: 0` from the model. Not yet tried on a real person. |
+| 2026-10-07 | Street test data | TfL JamCam API live (890 cams). Engine runs a JamCam MP4 straight from its URL, no code: Piccadilly Circus, 131 frames, 10.8 fps, people tracked, 0 events. No new resources added. |
 | 2026-10-07 | mvp1 fixes | Branch `mvp1`. Webcam test: one person showed as 3–5 nested boxes / 18 IDs (1280 upscale); `live_imgsz: 640` → 1 box, 1 ID. Idle answers not logged, no clothing/absence captions, loitering only on calibrated cameras (I6, I7). Rules module (2.R1) paused, no code yet. |
 | 2026-10-07 | I5 confidence evaluation | Built offline event-confidence scorer, label-sheet generator, and review protocol on an independent branch; synthetic checks pass. Real labels and a calibration decision remain. |
 | 2026-10-07 | Issues doc | Wrote `IMPROVEMENTS.md` (I1–I5) with measured evidence from the hub DB and `vlm` stats; TASKS rows for teammates. |

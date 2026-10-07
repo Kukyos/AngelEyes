@@ -337,10 +337,10 @@ class EventBook:
         opened = []
         self.reopened = []
         for h in hits:
-            key = (h.type, h.ids)
+            key = (h.type, h.ids, h.series.get("rule_id"))  # two watch rules on one person are two events
             ev = self.open.get(key)
             if ev is None:  # the same behaviour resuming shortly after it closed continues that event
-                ev = next((c for c in reversed(self.closed) if (c["type"], tuple(c["ids"])) == key
+                ev = next((c for c in reversed(self.closed) if (c["type"], tuple(c["ids"]), c["series"].get("rule_id")) == key
                            and t - c["e"] <= self.reopen), None)
                 if ev is not None:
                     self.closed.remove(ev)

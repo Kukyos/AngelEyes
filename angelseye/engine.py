@@ -33,12 +33,14 @@ import numpy as np
 from angelseye import ROOT, load_config
 from angelseye.behaviours import Detectors, EventBook, Obs, Track
 from angelseye.geo import Ground
+from angelseye.rules import RuleFeed, Watch
 
 SKELETON = [(5, 7), (7, 9), (6, 8), (8, 10), (5, 6), (5, 11), (6, 12), (11, 12), (11, 13), (13, 15), (12, 14), (14, 16)]
 # monochrome overlay: grey = tracked, white = flagged, inverted label = alert
 BGR = {"ok": (175, 175, 175), "watch": (255, 255, 255), "alert": (255, 255, 255), "dim": (110, 110, 110)}
 BLACK = (0, 0, 0)
-NAMES = {"fall": "FALL", "sudden_run": "SUDDEN RUN", "sos": "SOS", "following": "FOLLOWING", "loitering": "LOITERING"}
+NAMES = {"fall": "FALL", "sudden_run": "SUDDEN RUN", "sos": "SOS", "following": "FOLLOWING", "loitering": "LOITERING",
+         "rule": "RULE"}
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
@@ -196,6 +198,8 @@ class Engine:
         self.idp = f"{self.name}-{self.t0:%H%M%S}" if live else self.name  # live sessions never reuse event IDs
         self.tracks, self.alias, self.records = {}, {}, {}
         self.det, self.book = Detectors(self.cfg), EventBook()
+        self.watch = Watch(self.cfg)  # admin rules (D20), read from the hub
+        self.feed = RuleFeed(self.hub, self.cfg["rules"]["poll_s"]) if self.hub else None
         self._hub_warned = False
         self.describer = None
         if live or describe:
@@ -345,6 +349,8 @@ class Engine:
 
                 active = self.update_tracks(frame, boxes, kps, ids, confs, t)
                 hits = self.det.step(active, t)
+                if self.feed and self.feed.rules:
+                    hits += self.watch.step(active, t, self.feed.rules)
                 opened, closed = self.book.step(t, hits)
 
                 if cfg["output"]["head_blur"]:
@@ -470,6 +476,9 @@ class Engine:
                 flags.setdefault(ids_[0], []).append(f"FOLLOWED BY P{ids_[1]}")
             elif ev["type"] == "loitering":
                 flags.setdefault(ids_[0], []).append(f"LOITERING {t - ev['s']:.0f}s")
+            elif ev["type"] == "rule":
+                for i in ids_:
+                    flags.setdefault(i, []).append("RULE " + ev["series"]["rule_text"][:28].upper())
             else:
                 flags.setdefault(ids_[0], []).append(NAMES[ev["type"]])
         for tr in active:
